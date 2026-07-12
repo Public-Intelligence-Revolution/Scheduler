@@ -10,6 +10,7 @@ from scheduler import __version__
 from scheduler.api.health import router as health_router
 from scheduler.api.heartbeat import router as heartbeat_router
 from scheduler.api.nodes import router as nodes_router
+from scheduler.api.schedule import router as schedule_router
 from scheduler.core.config import get_settings
 from scheduler.core.logging import setup_logging
 from scheduler.registry.node_registry import NodeRegistry
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(nodes_router)
     app.include_router(heartbeat_router)
+    app.include_router(schedule_router)
 
     return app
 

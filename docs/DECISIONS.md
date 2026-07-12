@@ -99,6 +99,24 @@ Scoring parameters weighted according to: queue length (50%), GPU utilization (3
 
 ---
 
+## Inference Request API
+
+`POST /schedule` thin endpoint translating requests to `Scheduler.select_node`.
+
+Uses FastAPI dependency injection to create and resolve `Scheduler` dependency dynamically using the shared `NodeRegistry`.
+
+Maps ValueError to HTTP 404 (Not Found) when no eligible compute node is found.
+
+---
+
+## Interactive Scheduler Demonstration
+
+Command line demonstration script `examples/demo.py` designed to run in a standalone fashion without spinning up web server.
+
+Shows realistic distributed scenarios (e.g. A100 vs 4090 vs 3090) and step-by-step scoring transparency to validate correct algorithmic operation.
+
+---
+
 ## Version 1 Scope
 
 No Tensor Parallelism.

@@ -60,13 +60,21 @@ If the node is not registered, returns HTTP 404 Not Found.
 
 ---
 
-## Planned APIs
+## Schedule
 
 POST /schedule
 
-Return the best node for a request.
+Find the best eligible compute node for running a requested model.
+
+Request body: ScheduleRequest (with field model_name: str)
+
+Returns: ScheduleResponse (with fields node_id, hostname, ip_address, region) (HTTP 200 OK)
+
+If no eligible node is found or registered, returns HTTP 404 Not Found.
 
 ---
+
+## Planned APIs
 
 POST /forward
 

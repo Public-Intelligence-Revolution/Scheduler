@@ -144,6 +144,18 @@ Defined in src/scheduler/scheduler/algorithm.py. Exported from src/scheduler/sch
 
 ---
 
+## Inference Request API
+
+Thin endpoint exposing the scheduling capabilities to clients.
+
+Endpoint: POST /schedule.
+
+Accepts a model request (`ScheduleRequest`) and invokes the `Scheduler` algorithm via dependency injection. Returns a `ScheduleResponse` containing node credentials on success, or raises HTTP 404 (Not Found) if no eligible nodes are found.
+
+Defined in src/scheduler/api/schedule.py. Mounted in src/scheduler/main.py.
+
+---
+
 ## Out of Scope (v1)
 
 - Tensor Parallelism

@@ -14,9 +14,9 @@
 
 [x] Scheduling Algorithm
 
-[ ] Request Forwarding
+[x] Request Forwarding
 
-[ ] Multi-node Demonstration
+[x] Multi-node Demonstration
 
 ---
 
