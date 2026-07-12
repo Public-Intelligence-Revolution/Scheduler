@@ -12,6 +12,7 @@ Node models complete.
 Node registry complete.
 Registration API complete.
 Heartbeats complete.
+Scheduling algorithm complete.
 Core scheduling not yet implemented.
 
 Completed
@@ -32,11 +33,13 @@ Completed
 - Heartbeat Domain Model Tests
 - Heartbeat API & Runtime Updates (POST /heartbeat)
 - Heartbeat API & Runtime Update Tests
+- Scheduling Algorithm (Scheduler.select_node)
+- Scheduling Algorithm Tests
 
 Current Task
 
-Scheduling Algorithm
+Request Forwarding
 
 Next Feature
 
-Request Forwarding
+Multi-node Demonstration

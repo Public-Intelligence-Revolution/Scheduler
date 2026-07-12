@@ -89,6 +89,16 @@ Heartbeat updates tracked in a separate `_heartbeats` dictionary in the registry
 
 ---
 
+## Scheduling Algorithm
+
+Pure python implementation of scoring and selection logic decoupled from networking/HTTP layers.
+
+Stable tie-breaking achieved using Python's `min()` which naturally preserves registry insertion order (stable sort).
+
+Scoring parameters weighted according to: queue length (50%), GPU utilization (30%), CPU utilization (10%), and VRAM availability (-10%).
+
+---
+
 ## Version 1 Scope
 
 No Tensor Parallelism.

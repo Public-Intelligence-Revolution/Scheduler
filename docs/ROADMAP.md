@@ -12,7 +12,7 @@
 
 [x] Heartbeats
 
-[ ] Scheduling Algorithm
+[x] Scheduling Algorithm
 
 [ ] Request Forwarding
 

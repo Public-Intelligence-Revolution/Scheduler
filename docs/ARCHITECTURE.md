@@ -124,6 +124,26 @@ Defined in src/scheduler/api/heartbeat.py. Mounted in src/scheduler/main.py.
 
 ---
 
+## Scheduling Algorithm
+
+### Scheduler
+
+Deterministic compute node selection logic based on node capacity, status, and resource load.
+
+Retrieves registered nodes from the registry and filters them to identify eligible candidate nodes. Candidate nodes must:
+- Advertise the requested model in `available_models`.
+- Have an active runtime heartbeat record.
+- Have a status other than `OFFLINE`.
+
+Scores eligible candidate nodes using the formula:
+`score = (queue_length * 0.5) + (gpu_utilization * 0.3) + (cpu_utilization * 0.1) - (vram_available_gb * 0.1)`
+
+Selects and returns the node with the lowest score. Ties are broken deterministically by selecting the first node in insertion order. Raises a `ValueError` if no eligible nodes are found.
+
+Defined in src/scheduler/scheduler/algorithm.py. Exported from src/scheduler/scheduler/__init__.py.
+
+---
+
 ## Out of Scope (v1)
 
 - Tensor Parallelism
