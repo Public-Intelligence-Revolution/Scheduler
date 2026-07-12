@@ -46,13 +46,21 @@ Missing node returns HTTP 404.
 
 ---
 
-## Planned APIs
+## Heartbeat
 
 POST /heartbeat
 
-Update node status.
+Update node runtime status and resource utilization metrics.
+
+Request body: Heartbeat
+
+Returns: {"status": "ok"} (HTTP 200 OK)
+
+If the node is not registered, returns HTTP 404 Not Found.
 
 ---
+
+## Planned APIs
 
 POST /schedule
 

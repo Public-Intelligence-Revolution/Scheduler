@@ -40,15 +40,18 @@ The Scheduler only decides where requests should execute.
 
 ---
 
-## Node Models
+## Node & Heartbeat Models
 
 StrEnum for NodeStatus (Python 3.11+ native support).
 
-Pydantic v2 BaseModel for GPUInfo and Node.
+Pydantic v2 BaseModel for GPUInfo, Node, and Heartbeat.
+
+Separation of concerns: Node represents static configuration and identity, while Heartbeat represents runtime resource utilization and load metrics.
 
 Pure data models with no business logic, storage, or networking.
 
-Field-level validation constraints (gt, ge) for numeric fields.
+Field-level validation constraints (gt, ge, le) for numeric and utilization fields.
+
 
 ---
 
@@ -73,6 +76,16 @@ FastAPI dependency injection via Annotated[type, Depends()] to satisfy ruff B008
 Thin handlers: API layer only translates HTTP to registry calls.
 
 ValueError from registry mapped to HTTP 409. None from get mapped to HTTP 404.
+
+---
+
+## Heartbeat API & Updates
+
+Heartbeat updates tracked in a separate `_heartbeats` dictionary in the registry, keyed by `node_id`.
+
+`ValueError` raised when receiving a heartbeat from an unregistered node.
+
+`POST /heartbeat` mapped to `NodeRegistry.update_heartbeat`. Mapped ValueError to HTTP 404 (Not Found) for unrecognized node_id.
 
 ---
 

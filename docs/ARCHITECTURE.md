@@ -71,9 +71,16 @@ Pydantic model for GPU hardware: name, vram_total_gb, vram_available_gb.
 
 ### Node
 
-Pydantic model representing a compute node: identity (node_id, hostname, ip_address, region), hardware (gpu, cpu_cores, ram_gb), state (models, queue_length, status, last_heartbeat).
+Pydantic model representing static compute node identity and capabilities: identity (node_id, hostname, ip_address, region), hardware (gpu, cpu_cores, ram_total_gb), and available_models.
 
 Defined in src/scheduler/models/node.py. Exported from src/scheduler/models/__init__.py.
+
+### Heartbeat
+
+Pydantic model representing dynamic runtime status and resource utilization of a compute node: node_id, timestamp, status, queue_length, cpu_utilization, ram_available_gb, gpu_utilization, vram_available_gb.
+
+Defined in src/scheduler/models/heartbeat.py. Exported from src/scheduler/models/__init__.py.
+
 
 ---
 
@@ -81,9 +88,9 @@ Defined in src/scheduler/models/node.py. Exported from src/scheduler/models/__in
 
 ### NodeRegistry
 
-Thread-safe in-memory registry storing Node objects keyed by node_id. Preserves insertion order. Provides register, unregister, get, list, update, exists, clear, and count operations.
+Thread-safe in-memory registry storing Node objects keyed by node_id. Preserves insertion order. Tracks runtime Heartbeat updates. Provides register, unregister, get, list, update, exists, clear, count, update_heartbeat, and get_heartbeat operations.
 
-Raises ValueError on duplicate registration, updating a missing node, or removing a missing node.
+Raises ValueError on duplicate registration, updating a missing node, removing a missing node, or updating a heartbeat for an unregistered node.
 
 Contains no scheduler logic, persistence, networking, or HTTP endpoints.
 
@@ -102,6 +109,18 @@ NodeRegistry is created in create_app() and stored on app.state. Retrieved via F
 Handlers contain no business logic. The registry is solely responsible for node management.
 
 Defined in src/scheduler/api/nodes.py. Mounted in src/scheduler/main.py.
+
+---
+
+## Heartbeat API
+
+Thin API layer receiving compute node heartbeats.
+
+Endpoint: POST /heartbeat.
+
+Uses NodeRegistry to store the latest heartbeat metrics for the reporting node. Maps NodeRegistry ValueErrors to HTTP 404 (Not Found) when the node is unknown.
+
+Defined in src/scheduler/api/heartbeat.py. Mounted in src/scheduler/main.py.
 
 ---
 

@@ -1,27 +1,9 @@
 """Tests for node representation models."""
 
-from datetime import UTC, datetime
-
 import pytest
 from pydantic import ValidationError
 
-from scheduler.models.node import GPUInfo, Node, NodeStatus
-
-
-class TestNodeStatus:
-    """Tests for the NodeStatus enum."""
-
-    def test_values(self):
-        assert NodeStatus.ONLINE == "online"
-        assert NodeStatus.OFFLINE == "offline"
-        assert NodeStatus.BUSY == "busy"
-        assert NodeStatus.UNKNOWN == "unknown"
-
-    def test_member_count(self):
-        assert len(NodeStatus) == 4
-
-    def test_is_string(self):
-        assert isinstance(NodeStatus.ONLINE, str)
+from scheduler.models.node import GPUInfo, Node
 
 
 class TestGPUInfo:
@@ -61,11 +43,7 @@ class TestNode:
     def gpu(self) -> GPUInfo:
         return GPUInfo(name="NVIDIA A100", vram_total_gb=80.0, vram_available_gb=60.0)
 
-    @pytest.fixture()
-    def now(self) -> datetime:
-        return datetime.now(tz=UTC)
-
-    def test_full_construction(self, gpu: GPUInfo, now: datetime):
+    def test_full_construction(self, gpu: GPUInfo):
         node = Node(
             node_id="node-001",
             hostname="worker-1",
@@ -73,11 +51,8 @@ class TestNode:
             region="us-east-1",
             gpu=gpu,
             cpu_cores=32,
-            ram_gb=128.0,
-            models=["llama-3-70b", "mistral-7b"],
-            queue_length=5,
-            status=NodeStatus.ONLINE,
-            last_heartbeat=now,
+            ram_total_gb=128.0,
+            available_models=["llama-3-70b", "mistral-7b"],
         )
         assert node.node_id == "node-001"
         assert node.hostname == "worker-1"
@@ -85,13 +60,10 @@ class TestNode:
         assert node.region == "us-east-1"
         assert node.gpu == gpu
         assert node.cpu_cores == 32
-        assert node.ram_gb == 128.0
-        assert node.models == ["llama-3-70b", "mistral-7b"]
-        assert node.queue_length == 5
-        assert node.status == NodeStatus.ONLINE
-        assert node.last_heartbeat == now
+        assert node.ram_total_gb == 128.0
+        assert node.available_models == ["llama-3-70b", "mistral-7b"]
 
-    def test_defaults(self, gpu: GPUInfo, now: datetime):
+    def test_defaults(self, gpu: GPUInfo):
         node = Node(
             node_id="node-002",
             hostname="worker-2",
@@ -99,14 +71,11 @@ class TestNode:
             region="us-west-1",
             gpu=gpu,
             cpu_cores=16,
-            ram_gb=64.0,
-            last_heartbeat=now,
+            ram_total_gb=64.0,
         )
-        assert node.models == []
-        assert node.queue_length == 0
-        assert node.status == NodeStatus.UNKNOWN
+        assert node.available_models == []
 
-    def test_zero_cpu_cores_rejected(self, gpu: GPUInfo, now: datetime):
+    def test_zero_cpu_cores_rejected(self, gpu: GPUInfo):
         with pytest.raises(ValidationError):
             Node(
                 node_id="node-003",
@@ -115,11 +84,10 @@ class TestNode:
                 region="eu-west-1",
                 gpu=gpu,
                 cpu_cores=0,
-                ram_gb=64.0,
-                last_heartbeat=now,
+                ram_total_gb=64.0,
             )
 
-    def test_negative_ram_rejected(self, gpu: GPUInfo, now: datetime):
+    def test_negative_ram_rejected(self, gpu: GPUInfo):
         with pytest.raises(ValidationError):
             Node(
                 node_id="node-004",
@@ -128,20 +96,5 @@ class TestNode:
                 region="eu-west-1",
                 gpu=gpu,
                 cpu_cores=8,
-                ram_gb=-1.0,
-                last_heartbeat=now,
-            )
-
-    def test_negative_queue_length_rejected(self, gpu: GPUInfo, now: datetime):
-        with pytest.raises(ValidationError):
-            Node(
-                node_id="node-005",
-                hostname="worker-5",
-                ip_address="10.0.0.5",
-                region="eu-west-1",
-                gpu=gpu,
-                cpu_cores=8,
-                ram_gb=64.0,
-                queue_length=-1,
-                last_heartbeat=now,
+                ram_total_gb=-1.0,
             )

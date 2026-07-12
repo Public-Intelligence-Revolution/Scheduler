@@ -10,7 +10,7 @@
 
 [x] Registration API
 
-[ ] Heartbeats
+[x] Heartbeats
 
 [ ] Scheduling Algorithm
 

@@ -1,7 +1,5 @@
 """Tests for node registration and discovery API endpoints."""
 
-from datetime import UTC, datetime
-
 from httpx import AsyncClient
 
 
@@ -18,11 +16,8 @@ def _node_payload(node_id: str = "node-001") -> dict:
             "vram_available_gb": 60.0,
         },
         "cpu_cores": 32,
-        "ram_gb": 128.0,
-        "models": ["llama-3-70b"],
-        "queue_length": 0,
-        "status": "online",
-        "last_heartbeat": datetime.now(tz=UTC).isoformat(),
+        "ram_total_gb": 128.0,
+        "available_models": ["llama-3-70b"],
     }
 
 
@@ -35,7 +30,6 @@ class TestRegisterNode:
         data = response.json()
         assert data["node_id"] == "node-001"
         assert data["hostname"] == "host-node-001"
-        assert data["status"] == "online"
 
     async def test_register_returns_full_node(self, client: AsyncClient):
         payload = _node_payload()
@@ -44,7 +38,7 @@ class TestRegisterNode:
         data = response.json()
         assert data["gpu"]["name"] == "NVIDIA A100"
         assert data["cpu_cores"] == 32
-        assert data["models"] == ["llama-3-70b"]
+        assert data["available_models"] == ["llama-3-70b"]
 
     async def test_register_duplicate_returns_409(self, client: AsyncClient):
         payload = _node_payload("dup-node")
