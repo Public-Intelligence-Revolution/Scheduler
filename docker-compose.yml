@@ -1,0 +1,13 @@
+services:
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      SCHEDULER_ENVIRONMENT: development
+      SCHEDULER_LOG_LEVEL: debug
+    restart: unless-stopped
