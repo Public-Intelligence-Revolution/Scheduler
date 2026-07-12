@@ -8,7 +8,7 @@
 
 [x] Node Registry
 
-[ ] Registration API
+[x] Registration API
 
 [ ] Heartbeats
 

@@ -91,6 +91,20 @@ Defined in src/scheduler/registry/node_registry.py. Exported from src/scheduler/
 
 ---
 
+## Registration API
+
+Thin API layer translating HTTP requests to NodeRegistry operations.
+
+Endpoints: POST /nodes/register, GET /nodes, GET /nodes/{node_id}.
+
+NodeRegistry is created in create_app() and stored on app.state. Retrieved via FastAPI dependency injection using Annotated[NodeRegistry, Depends(get_registry)].
+
+Handlers contain no business logic. The registry is solely responsible for node management.
+
+Defined in src/scheduler/api/nodes.py. Mounted in src/scheduler/main.py.
+
+---
+
 ## Out of Scope (v1)
 
 - Tensor Parallelism

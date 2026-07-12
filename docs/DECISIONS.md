@@ -64,6 +64,18 @@ ValueError for duplicate registration, missing update, and missing unregister.
 
 ---
 
+## Registration API
+
+NodeRegistry created in create_app() and stored on app.state.
+
+FastAPI dependency injection via Annotated[type, Depends()] to satisfy ruff B008.
+
+Thin handlers: API layer only translates HTTP to registry calls.
+
+ValueError from registry mapped to HTTP 409. None from get mapped to HTTP 404.
+
+---
+
 ## Version 1 Scope
 
 No Tensor Parallelism.

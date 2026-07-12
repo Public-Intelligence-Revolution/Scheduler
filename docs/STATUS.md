@@ -10,6 +10,7 @@ Scheduler:
 Foundation complete.
 Node models complete.
 Node registry complete.
+Registration API complete.
 Core scheduling not yet implemented.
 
 Completed
@@ -24,11 +25,13 @@ Completed
 - Node Model Tests
 - In-Memory Node Registry (NodeRegistry)
 - Node Registry Tests
+- Registration API (POST /nodes/register, GET /nodes, GET /nodes/{node_id})
+- Registration API Tests
 
 Current Task
 
-Registration API
+Heartbeats
 
 Next Feature
 
-Heartbeats
+Scheduling Algorithm
