@@ -8,6 +8,15 @@ Version 1 focuses on building the core scheduling infrastructure.
 
 ---
 
+## Demo
+
+A walkthrough of the first working prototype is available on YouTube:
+[Public Intelligence v1 Demo](https://www.youtube.com/watch?v=cGDWpOArB5I)
+
+This video demonstrates the end-to-end integration of the Website, Scheduler (showing the current v1 implementation), Node, registration, heartbeats, and local inference.
+
+---
+
 ## Current Features
 
 - Node registration
