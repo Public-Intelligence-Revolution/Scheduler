@@ -184,22 +184,22 @@ def main() -> None:
                 print(f"  ✗ Model unavailable on {node.node_id}")
                 print("-" * 25)
                 continue
-            print(f"  ✓ Model available")
+            print("  ✓ Model available")
 
             # Check heartbeat
             hb = registry.get_heartbeat(node.node_id)
             if hb is None:
-                print(f"  ✗ Heartbeat missing")
+                print("  ✗ Heartbeat missing")
                 print("-" * 25)
                 continue
-            print(f"  ✓ Heartbeat present")
+            print("  ✓ Heartbeat present")
 
             # Check status
             if hb.status == NodeStatus.OFFLINE:
-                print(f"  ✗ Node is OFFLINE")
+                print("  ✗ Node is OFFLINE")
                 print("-" * 25)
                 continue
-            print(f"  ✓ Node is ONLINE")
+            print("  ✓ Node is ONLINE")
 
             # Compute score
             score = (
@@ -208,7 +208,7 @@ def main() -> None:
                 + (hb.cpu_utilization * 0.1)
                 - (hb.vram_available_gb * 0.1)
             )
-            print(f"  * Score Calculation:")
+            print("  * Score Calculation:")
             print(
                 f"    (queue_length * 0.5)     = {hb.queue_length} * 0.5  = {hb.queue_length * 0.5:.2f}"
             )

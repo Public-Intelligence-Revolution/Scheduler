@@ -1,6 +1,6 @@
 """In-memory node registry for storing and managing compute nodes."""
 
-import threading
+import asyncio
 
 from scheduler.models.heartbeat import Heartbeat
 from scheduler.models.node import Node
@@ -16,11 +16,12 @@ class NodeRegistry:
     """
 
     def __init__(self) -> None:
-        self._lock = threading.Lock()
+        self._lock = asyncio.Lock()
         self._nodes: dict[str, Node] = {}
         self._heartbeats: dict[str, Heartbeat] = {}
+        self._dampeners: dict[str, float] = {}
 
-    def register(self, node: Node) -> None:
+    async def register(self, node: Node) -> None:
         """Register a new node.
 
         Args:
@@ -29,13 +30,14 @@ class NodeRegistry:
         Raises:
             ValueError: If a node with the same node_id is already registered.
         """
-        with self._lock:
+        async with self._lock:
             if node.node_id in self._nodes:
                 msg = f"Node already registered: {node.node_id}"
                 raise ValueError(msg)
             self._nodes[node.node_id] = node
+            self._dampeners[node.node_id] = 0.0
 
-    def unregister(self, node_id: str) -> None:
+    async def unregister(self, node_id: str) -> None:
         """Remove a node and its heartbeat from the registry.
 
         Args:
@@ -44,14 +46,15 @@ class NodeRegistry:
         Raises:
             ValueError: If the node_id is not registered.
         """
-        with self._lock:
+        async with self._lock:
             if node_id not in self._nodes:
                 msg = f"Node not found: {node_id}"
                 raise ValueError(msg)
             del self._nodes[node_id]
             self._heartbeats.pop(node_id, None)
+            self._dampeners.pop(node_id, None)
 
-    def get(self, node_id: str) -> Node | None:
+    async def get(self, node_id: str) -> Node | None:
         """Look up a node by ID.
 
         Args:
@@ -60,19 +63,19 @@ class NodeRegistry:
         Returns:
             The Node if found, otherwise None.
         """
-        with self._lock:
+        async with self._lock:
             return self._nodes.get(node_id)
 
-    def list(self) -> list[Node]:
+    async def list(self) -> list[Node]:
         """Return all registered nodes in insertion order.
 
         Returns:
             A list of all registered Node objects.
         """
-        with self._lock:
+        async with self._lock:
             return list(self._nodes.values())
 
-    def update(self, node: Node) -> None:
+    async def update(self, node: Node) -> None:
         """Update an existing node's data.
 
         Args:
@@ -81,13 +84,13 @@ class NodeRegistry:
         Raises:
             ValueError: If the node_id is not registered.
         """
-        with self._lock:
+        async with self._lock:
             if node.node_id not in self._nodes:
                 msg = f"Node not found: {node.node_id}"
                 raise ValueError(msg)
             self._nodes[node.node_id] = node
 
-    def exists(self, node_id: str) -> bool:
+    async def exists(self, node_id: str) -> bool:
         """Check whether a node is registered.
 
         Args:
@@ -96,25 +99,26 @@ class NodeRegistry:
         Returns:
             True if the node is registered, False otherwise.
         """
-        with self._lock:
+        async with self._lock:
             return node_id in self._nodes
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Remove all nodes and heartbeats from the registry."""
-        with self._lock:
+        async with self._lock:
             self._nodes.clear()
             self._heartbeats.clear()
+            self._dampeners.clear()
 
-    def count(self) -> int:
+    async def count(self) -> int:
         """Return the number of registered nodes.
 
         Returns:
             The count of registered nodes.
         """
-        with self._lock:
+        async with self._lock:
             return len(self._nodes)
 
-    def update_heartbeat(self, heartbeat: Heartbeat) -> None:
+    async def update_heartbeat(self, heartbeat: Heartbeat) -> None:
         """Update the runtime state for a registered node with a new heartbeat.
 
         Args:
@@ -123,13 +127,15 @@ class NodeRegistry:
         Raises:
             ValueError: If the node_id in heartbeat is not registered.
         """
-        with self._lock:
+        async with self._lock:
             if heartbeat.node_id not in self._nodes:
                 msg = f"Node not found: {heartbeat.node_id}"
                 raise ValueError(msg)
             self._heartbeats[heartbeat.node_id] = heartbeat
+            # Decay cleanly on incoming heartbeat
+            self._dampeners[heartbeat.node_id] = 0.0
 
-    def get_heartbeat(self, node_id: str) -> Heartbeat | None:
+    async def get_heartbeat(self, node_id: str) -> Heartbeat | None:
         """Get the latest heartbeat for a node.
 
         Args:
@@ -138,5 +144,32 @@ class NodeRegistry:
         Returns:
             The Heartbeat if found, otherwise None.
         """
-        with self._lock:
+        async with self._lock:
             return self._heartbeats.get(node_id)
+
+    async def get_dampener(self, node_id: str) -> float:
+        """Get the scheduling dampener for a node.
+
+        Args:
+            node_id: The ID of the node.
+
+        Returns:
+            The dampener value.
+        """
+        async with self._lock:
+            return self._dampeners.get(node_id, 0.0)
+
+    async def increment_dampener(self, node_id: str) -> None:
+        """Increment the scheduling dampener for a node by 0.1.
+
+        Args:
+            node_id: The ID of the node.
+
+        Raises:
+            ValueError: If the node_id is not registered.
+        """
+        async with self._lock:
+            if node_id not in self._nodes:
+                msg = f"Node not found: {node_id}"
+                raise ValueError(msg)
+            self._dampeners[node_id] = self._dampeners.get(node_id, 0.0) + 0.1

@@ -88,7 +88,7 @@ Defined in src/scheduler/models/heartbeat.py. Exported from src/scheduler/models
 
 ### NodeRegistry
 
-Thread-safe in-memory registry storing Node objects keyed by node_id. Preserves insertion order. Tracks runtime Heartbeat updates. Provides register, unregister, get, list, update, exists, clear, count, update_heartbeat, and get_heartbeat operations.
+Thread-safe in-memory registry using non-blocking native `asyncio.Lock`. Stores Node objects keyed by node_id in insertion order. Tracks runtime Heartbeat updates and a scheduling dampener for concurrency protection. Provides register, unregister, get, list, update, exists, clear, count, update_heartbeat, get_heartbeat, get_dampener, and increment_dampener operations.
 
 Raises ValueError on duplicate registration, updating a missing node, removing a missing node, or updating a heartbeat for an unregistered node.
 
@@ -136,7 +136,13 @@ Retrieves registered nodes from the registry and filters them to identify eligib
 - Have a status other than `OFFLINE`.
 
 Scores eligible candidate nodes using the formula:
-`score = (queue_length * 0.5) + (gpu_utilization * 0.3) + (cpu_utilization * 0.1) - (vram_available_gb * 0.1)`
+`score = (queue_length * 0.4) + (gpu_utilization_norm * 0.3) + (cpu_utilization_norm * 0.1) + ((1.0 - (vram_available / vram_total)) * 0.2) + dampener`
+
+Where:
+- `gpu_utilization_norm` is `gpu_utilization / 100.0`
+- `cpu_utilization_norm` is `cpu_utilization / 100.0`
+- `vram_available / vram_total` is the ratio of available VRAM to total GPU VRAM.
+- `dampener` is the concurrency protection dampener penalty (+0.1 increment per active task assignment).
 
 Selects and returns the node with the lowest score. Ties are broken deterministically by selecting the first node in insertion order. Raises a `ValueError` if no eligible nodes are found.
 

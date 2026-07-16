@@ -18,6 +18,8 @@
 
 [x] Multi-node Demonstration
 
+[x] Concurrency Lock Migration (asyncio.Lock) & Concurrency Protection (Scheduling Dampener)
+
 ---
 
 ## Version 0.2

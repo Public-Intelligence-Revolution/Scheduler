@@ -19,7 +19,7 @@ class Scheduler:
         """
         self._registry = registry
 
-    def select_node(self, model_name: str) -> Node:
+    async def select_node(self, model_name: str) -> Node:
         """Select the best compute node for the requested model.
 
         Filters nodes by registration status, active heartbeat, status (must
@@ -36,7 +36,7 @@ class Scheduler:
         Raises:
             ValueError: If no eligible node is found.
         """
-        nodes = self._registry.list()
+        nodes = await self._registry.list()
         eligible_nodes_with_scores: list[tuple[Node, float]] = []
 
         for node in nodes:
@@ -45,7 +45,7 @@ class Scheduler:
                 continue
 
             # 2. Must have a heartbeat
-            heartbeat = self._registry.get_heartbeat(node.node_id)
+            heartbeat = await self._registry.get_heartbeat(node.node_id)
             if heartbeat is None:
                 continue
 
@@ -53,14 +53,24 @@ class Scheduler:
             if heartbeat.status == NodeStatus.OFFLINE:
                 continue
 
+            # Get dampener
+            dampener = await self._registry.get_dampener(node.node_id)
+
             # Compute score
-            # score = (queue_length * 0.5) + (gpu_utilization * 0.3)
-            #         + (cpu_utilization * 0.1) - (vram_available_gb * 0.1)
+            # Score = (queue_length * 0.4) + (gpu_utilization * 0.3)
+            #         + (cpu_utilization * 0.1)
+            #         + ((1.0 - (vram_available / vram_total)) * 0.2) + dampener
+            gpu_util = heartbeat.gpu_utilization / 100.0
+            cpu_util = heartbeat.cpu_utilization / 100.0
+            vram_total = node.gpu.vram_total_gb
+            vram_ratio = heartbeat.vram_available_gb / vram_total if vram_total > 0 else 0.0
+
             score = (
-                (heartbeat.queue_length * 0.5)
-                + (heartbeat.gpu_utilization * 0.3)
-                + (heartbeat.cpu_utilization * 0.1)
-                - (heartbeat.vram_available_gb * 0.1)
+                (heartbeat.queue_length * 0.4)
+                + (gpu_util * 0.3)
+                + (cpu_util * 0.1)
+                + ((1.0 - vram_ratio) * 0.2)
+                + dampener
             )
             eligible_nodes_with_scores.append((node, score))
 
@@ -71,4 +81,8 @@ class Scheduler:
         # Stable min: Python's min is stable, so in case of ties it returns
         # the first node in insertion order (which is preserved in self._registry.list()).
         selected_node, _ = min(eligible_nodes_with_scores, key=lambda x: x[1])
+
+        # Increment scheduling dampener by 0.1 for active task assignment
+        await self._registry.increment_dampener(selected_node.node_id)
+
         return selected_node

@@ -40,10 +40,13 @@ Completed
 - Inference Request API (POST /schedule)
 - Inference Request API Tests
 - Interactive Scheduler Demonstration (examples/demo.py)
+- Asyncio.Lock migration for NodeRegistry (non-blocking)
+- Normalized scoring formula to prevent VRAM skew
+- Atomic scheduling dampener to prevent herd effect under concurrent bursts
 
 Current Task
 
-Scheduler v1 Completed and Demonstrated. Ready for Version 0.2 development.
+Scheduler v1 improvements complete. Ready for Version 0.2 development.
 
 Next Feature
 

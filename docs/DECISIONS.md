@@ -57,7 +57,7 @@ Field-level validation constraints (gt, ge, le) for numeric and utilization fiel
 
 ## Node Registry
 
-threading.Lock for thread-safety (standard library only).
+asyncio.Lock for thread-safety and non-blocking operation.
 
 Plain dict for insertion-order preservation (Python 3.7+ guaranteed).
 
@@ -95,7 +95,9 @@ Pure python implementation of scoring and selection logic decoupled from network
 
 Stable tie-breaking achieved using Python's `min()` which naturally preserves registry insertion order (stable sort).
 
-Scoring parameters weighted according to: queue length (50%), GPU utilization (30%), CPU utilization (10%), and VRAM availability (-10%).
+Scoring parameters weighted according to: queue length (40%), GPU utilization (30%), CPU utilization (10%), and VRAM availability (20%). Uses normalized range-bound values to prevent metric skew.
+
+Incremental scheduling dampener (+0.1 penalty per active assignment) is tracked and automatically applied/decayed to prevent the herd effect during concurrent bursts.
 
 ---
 

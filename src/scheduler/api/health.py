@@ -1,7 +1,8 @@
 """Health and readiness probe endpoints."""
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
@@ -16,7 +17,7 @@ _start_time: float = time.monotonic()
 
 @router.get("/health", response_model=HealthResponse)
 async def health(
-    settings: Settings = Depends(get_settings),
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> HealthResponse:
     """Liveness probe. Returns 200 if the process is running."""
     return HealthResponse(
@@ -28,7 +29,7 @@ async def health(
 
 @router.get("/health/ready", response_model=ReadinessResponse)
 async def readiness(
-    settings: Settings = Depends(get_settings),
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> ReadinessResponse:
     """Readiness probe. Returns 200 when the service can accept traffic."""
     return ReadinessResponse(
@@ -36,5 +37,5 @@ async def readiness(
         version=__version__,
         environment=settings.environment.value,
         uptime_seconds=time.monotonic() - _start_time,
-        timestamp=datetime.now(tz=timezone.utc),
+        timestamp=datetime.now(tz=UTC),
     )

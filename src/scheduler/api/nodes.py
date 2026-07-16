@@ -26,7 +26,7 @@ async def register_node(
 ) -> Node:
     """Register a compute node with the scheduler."""
     try:
-        registry.register(node)
+        await registry.register(node)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -40,7 +40,7 @@ async def list_nodes(
     registry: RegistryDep,
 ) -> list[Node]:
     """List all registered compute nodes."""
-    return registry.list()
+    return await registry.list()
 
 
 @router.get("/nodes/{node_id}", response_model=Node)
@@ -49,7 +49,7 @@ async def get_node(
     registry: RegistryDep,
 ) -> Node:
     """Get a specific node by ID."""
-    node = registry.get(node_id)
+    node = await registry.get(node_id)
     if node is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

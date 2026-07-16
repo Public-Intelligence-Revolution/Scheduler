@@ -38,3 +38,24 @@ Documentation Policy
 Current Priority
 
 Complete Scheduler Version 1 before implementing Version 2 features.
+
+---
+
+# Event Log
+
+## 2026-07-16
+
+### Changes Made
+- Migrated `NodeRegistry` to use non-blocking native `asyncio.Lock` instead of standard `threading.Lock`.
+- Made all `NodeRegistry` methods async and updated downstream routing endpoints (`register_node`, `list_nodes`, `get_node`, `receive_heartbeat`, `schedule_request`) to be `async def` and correctly await registry access.
+- Rewrote the load equation inside `algorithm.py` using strictly normalized, range-bound metric weights to eliminate VRAM skew:
+  `Score = (queue_length * 0.4) + (gpu_utilization_norm * 0.3) + (cpu_utilization_norm * 0.1) + ((1.0 - (vram_available / vram_total)) * 0.2)`
+- Added a `scheduling_dampener` atomic tracker (+0.1 penalty increment per active task assignment) inside the node registry's node tracking state to prevent herd effect under concurrent bursts, decaying cleanly to 0.0 upon incoming `POST /heartbeat` metrics.
+- Converted all tests in `tests/test_registry/test_node_registry.py` and `tests/test_scheduler/test_algorithm.py` to be async, substituting threading concurrency checks with asyncio gather/tasks and adding specific tests for scoring engine correctness and dampener functionality.
+
+### Metrics Achieved
+- Verification suite (Ruff, MyPy src, PyTest) passes with 100% success (0 errors, 74/74 unit tests passing).
+
+### Next Priority Items
+- Persistent Registry integration (Phase 0.2)
+- Adaptive Model Placement

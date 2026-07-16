@@ -20,7 +20,7 @@ async def receive_heartbeat(
 ) -> dict[str, str]:
     """Receive a heartbeat update from a compute node."""
     try:
-        registry.update_heartbeat(heartbeat)
+        await registry.update_heartbeat(heartbeat)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

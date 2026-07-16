@@ -27,7 +27,9 @@ class ScheduleResponse(BaseModel):
     region: str = Field(description="Geographic region of the selected node")
 
 
-def get_scheduler(registry: NodeRegistry = Depends(get_registry)) -> Scheduler:
+def get_scheduler(
+    registry: Annotated[NodeRegistry, Depends(get_registry)],
+) -> Scheduler:
     """Dependency provider for the Scheduler instance."""
     return Scheduler(registry)
 
@@ -42,7 +44,7 @@ async def schedule_request(
 ) -> ScheduleResponse:
     """Select the best compute node to run the requested model."""
     try:
-        node = scheduler.select_node(request.model_name)
+        node = await scheduler.select_node(request.model_name)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
