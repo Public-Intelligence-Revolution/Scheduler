@@ -61,9 +61,13 @@ Complete Scheduler Version 1 before implementing Version 2 features.
 - Decoded Zenoh payloads safely and routed heartbeat updates directly into the non-blocking `NodeRegistry`, preserving the score and dampener invariants.
 - Configured FastAPI startup lifespan to launch and manage the `ZenohRouter` background subscriber.
 - Wrote integration tests in `tests/test_zenoh_integration.py` simulating a Node publishing metrics over a local Zenoh session and verifying `NodeRegistry` state changes.
+- Added `unregister_node(node_id)` safe idempotent method to `NodeRegistry` to unregister nodes and clear all metrics/herd dampeners safely on deathrattles.
+- Declared Zenoh Liveliness subscriber monitoring `public-intelligence/net/liveliness/*` on `ZenohRouter` startup.
+- Processed DELETE events (deathrattles) in `ZenohRouter` callback to unregister dropped nodes from `NodeRegistry` asynchronously.
+- Wrote integration tests in `tests/test_zenoh_integration.py` (`test_zenoh_liveliness_deathrattle`) simulating node session drops and asserting automatic registry unregistration.
 
 ### Metrics Achieved
-- Verification suite (Ruff, MyPy src/tests, PyTest) passes with 100% success (0 errors, 81/81 unit & integration tests passing).
+- Verification suite (Ruff, MyPy src/tests, PyTest) passes with 100% success (0 errors, 82/82 unit & integration tests passing).
 
 ### Next Priority Items
 - Persistent Registry integration (Phase 0.2)

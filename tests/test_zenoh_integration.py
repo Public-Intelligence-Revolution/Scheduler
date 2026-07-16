@@ -99,3 +99,52 @@ async def test_zenoh_heartbeat_routing(test_node: Node, node_id: str) -> None:
     finally:
         # 6. Stop ZenohRouter cleanly
         router.stop()
+
+
+@pytest.mark.asyncio
+async def test_zenoh_liveliness_deathrattle(test_node: Node, node_id: str) -> None:
+    # 1. Create registry and register node
+    registry = NodeRegistry()
+    await registry.register(test_node)
+    assert await registry.exists(node_id) is True
+
+    # Configure Router session to listen on TCP loopback and disable multicast scouting
+    router_config = zenoh.Config()
+    router_config.insert_json5("listen/endpoints", '["tcp/127.0.0.1:7450"]')
+    router_config.insert_json5("scouting/multicast/enabled", "false")
+
+    # 2. Start ZenohRouter with the custom configuration
+    router = ZenohRouter(registry, config=router_config)
+    router.start()
+
+    # Configure Publisher session to connect directly to the Router TCP endpoint
+    pub_config = zenoh.Config()
+    pub_config.insert_json5("connect/endpoints", '["tcp/127.0.0.1:7450"]')
+    pub_config.insert_json5("scouting/multicast/enabled", "false")
+
+    try:
+        # 3. Create a local Zenoh session and declare a liveliness token
+        session = zenoh.open(pub_config)
+        token_path = f"public-intelligence/net/liveliness/{node_id}"
+        token = session.liveliness().declare_token(token_path)
+
+        # Wait a short moment to ensure the TCP handshake is fully complete
+        await asyncio.sleep(0.2)
+
+        # 4. Now simulate sudden node session drop by closing the session abruptly
+        token.undeclare()  # type: ignore[no-untyped-call]
+        session.close()  # type: ignore[no-untyped-call]
+
+        # 5. Wait for the background Zenoh threads to process the deathrattle (DELETE event)
+        for _ in range(30):
+            exists = await registry.exists(node_id)
+            if not exists:
+                break
+            await asyncio.sleep(0.05)
+
+        # 6. Verify the registry unregistered the node successfully
+        assert not await registry.exists(node_id), "Node not unregistered on deathrattle"
+
+    finally:
+        # 7. Stop ZenohRouter cleanly
+        router.stop()

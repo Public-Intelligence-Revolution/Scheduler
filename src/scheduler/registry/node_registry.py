@@ -173,3 +173,17 @@ class NodeRegistry:
                 msg = f"Node not found: {node_id}"
                 raise ValueError(msg)
             self._dampeners[node_id] = self._dampeners.get(node_id, 0.0) + 0.1
+
+    async def unregister_node(self, node_id: str) -> None:
+        """Unregister a node and clear its dynamic herd dampeners.
+
+        This method is idempotent and does not raise an error if the node
+        is not found, allowing clean self-correcting pool resize operations.
+
+        Args:
+            node_id: The ID of the node to unregister.
+        """
+        async with self._lock:
+            self._nodes.pop(node_id, None)
+            self._heartbeats.pop(node_id, None)
+            self._dampeners.pop(node_id, None)
