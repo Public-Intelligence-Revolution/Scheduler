@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from scheduler.api.auth import verify_auth_token
 from scheduler.api.nodes import get_registry
 from scheduler.registry.node_registry import NodeRegistry
 from scheduler.scheduler.algorithm import Scheduler
@@ -37,7 +38,12 @@ def get_scheduler(
 SchedulerDep = Annotated[Scheduler, Depends(get_scheduler)]
 
 
-@router.post("/schedule", response_model=ScheduleResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/schedule",
+    response_model=ScheduleResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verify_auth_token)],
+)
 async def schedule_request(
     request: ScheduleRequest,
     scheduler: SchedulerDep,

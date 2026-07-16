@@ -3,6 +3,7 @@
 from enum import StrEnum
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,6 +27,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        populate_by_name=True,
     )
 
     environment: Environment = Environment.DEVELOPMENT
@@ -33,6 +35,11 @@ class Settings(BaseSettings):
     log_level: str = "info"
     host: str = "0.0.0.0"
     port: int = 8000
+    network_auth_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SCHEDULER_NETWORK_AUTH_TOKEN", "NETWORK_AUTH_TOKEN"),
+        description="Secure network authentication token.",
+    )
 
 
 @lru_cache(maxsize=1)

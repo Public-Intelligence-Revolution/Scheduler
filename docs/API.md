@@ -20,6 +20,9 @@ POST /nodes/register
 
 Register a compute node.
 
+Headers:
+- `X-Network-Auth-Token`: The secure network authentication token (required if configured)
+
 Request body: Node
 
 Returns: Node (HTTP 201 Created)
@@ -52,6 +55,9 @@ POST /heartbeat
 
 Update node runtime status and resource utilization metrics.
 
+Headers:
+- `X-Network-Auth-Token`: The secure network authentication token (required if configured)
+
 Request body: Heartbeat
 
 Returns: {"status": "ok"} (HTTP 200 OK)
@@ -65,6 +71,9 @@ If the node is not registered, returns HTTP 404 Not Found.
 POST /schedule
 
 Find the best eligible compute node for running a requested model.
+
+Headers:
+- `X-Network-Auth-Token`: The secure network authentication token (required if configured)
 
 Request body: ScheduleRequest (with field model_name: str)
 

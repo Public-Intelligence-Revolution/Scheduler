@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from scheduler.api.auth import verify_auth_token
 from scheduler.models.node import Node
 from scheduler.registry.node_registry import NodeRegistry
 
@@ -19,7 +20,12 @@ def get_registry(request: Request) -> NodeRegistry:
 RegistryDep = Annotated[NodeRegistry, Depends(get_registry)]
 
 
-@router.post("/nodes/register", response_model=Node, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/nodes/register",
+    response_model=Node,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(verify_auth_token)],
+)
 async def register_node(
     node: Node,
     registry: RegistryDep,

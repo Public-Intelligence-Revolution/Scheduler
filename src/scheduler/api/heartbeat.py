@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from scheduler.api.auth import verify_auth_token
 from scheduler.api.nodes import get_registry
 from scheduler.models.heartbeat import Heartbeat
 from scheduler.registry.node_registry import NodeRegistry
@@ -13,7 +14,11 @@ router = APIRouter(tags=["heartbeat"])
 RegistryDep = Annotated[NodeRegistry, Depends(get_registry)]
 
 
-@router.post("/heartbeat", status_code=status.HTTP_200_OK)
+@router.post(
+    "/heartbeat",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verify_auth_token)],
+)
 async def receive_heartbeat(
     heartbeat: Heartbeat,
     registry: RegistryDep,

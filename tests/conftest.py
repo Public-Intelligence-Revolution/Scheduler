@@ -16,6 +16,7 @@ def settings() -> Settings:
         environment="development",
         debug=True,
         log_level="debug",
+        network_auth_token="test-auth-token",
     )
 
 
@@ -28,5 +29,6 @@ async def client(settings: Settings) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
+        headers={"X-Network-Auth-Token": "test-auth-token"},
     ) as ac:
         yield ac
