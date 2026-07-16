@@ -13,6 +13,7 @@ from scheduler.api.nodes import router as nodes_router
 from scheduler.api.schedule import router as schedule_router
 from scheduler.core.config import get_settings
 from scheduler.core.logging import setup_logging
+from scheduler.core.zenoh_router import ZenohRouter
 from scheduler.registry.node_registry import NodeRegistry
 
 logger = structlog.stdlib.get_logger()
@@ -29,7 +30,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         version=__version__,
         environment=settings.environment.value,
     )
+
+    # Initialize and start ZenohRouter
+    zenoh_router = ZenohRouter(app.state.registry)
+    zenoh_router.start()
+    app.state.zenoh_router = zenoh_router
+
     yield
+
+    # Stop ZenohRouter on shutdown
+    if hasattr(app.state, "zenoh_router"):
+        app.state.zenoh_router.stop()
+
     logger.info("scheduler_stopped")
 
 

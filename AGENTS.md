@@ -53,8 +53,17 @@ Complete Scheduler Version 1 before implementing Version 2 features.
 - Added a `scheduling_dampener` atomic tracker (+0.1 penalty increment per active task assignment) inside the node registry's node tracking state to prevent herd effect under concurrent bursts, decaying cleanly to 0.0 upon incoming `POST /heartbeat` metrics.
 - Converted all tests in `tests/test_registry/test_node_registry.py` and `tests/test_scheduler/test_algorithm.py` to be async, substituting threading concurrency checks with asyncio gather/tasks and adding specific tests for scoring engine correctness and dampener functionality.
 
+## 2026-07-17
+
+### Changes Made
+- Added `eclipse-zenoh` core transport dependency to support peer-to-peer node heartbeats.
+- Created `ZenohRouter` class inside `src/scheduler/core/zenoh_router.py` to bind an asynchronous Zenoh session listening on the key expression `public-intelligence/net/*/heartbeat`.
+- Decoded Zenoh payloads safely and routed heartbeat updates directly into the non-blocking `NodeRegistry`, preserving the score and dampener invariants.
+- Configured FastAPI startup lifespan to launch and manage the `ZenohRouter` background subscriber.
+- Wrote integration tests in `tests/test_zenoh_integration.py` simulating a Node publishing metrics over a local Zenoh session and verifying `NodeRegistry` state changes.
+
 ### Metrics Achieved
-- Verification suite (Ruff, MyPy src, PyTest) passes with 100% success (0 errors, 74/74 unit tests passing).
+- Verification suite (Ruff, MyPy src/tests, PyTest) passes with 100% success (0 errors, 81/81 unit & integration tests passing).
 
 ### Next Priority Items
 - Persistent Registry integration (Phase 0.2)
