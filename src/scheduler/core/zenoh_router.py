@@ -2,11 +2,13 @@
 
 import asyncio
 import json
+import uuid
 from typing import Any
 
 import structlog
 import zenoh
 
+from scheduler.core.consensus import RaftConsensusEngine
 from scheduler.models.heartbeat import Heartbeat
 from scheduler.registry.node_registry import NodeRegistry
 
@@ -29,6 +31,11 @@ class ZenohRouter:
         self.subscriber: zenoh.Subscriber[Any] | None = None
         self.liveliness_subscriber: zenoh.Subscriber[Any] | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
+
+        # Generate unique scheduler ID and instantiate the consensus engine
+        scheduler_id = f"scheduler-{uuid.uuid4().hex[:8]}"
+        self.consensus_engine = RaftConsensusEngine(scheduler_id, self.registry, self.config)
+        self._background_tasks: set[asyncio.Task[Any]] = set()
 
     def start(self) -> None:
         """Start the Zenoh router session and declare the subscriber."""
@@ -53,6 +60,11 @@ class ZenohRouter:
             "public-intelligence/net/liveliness/*", self._on_liveliness
         )
 
+        # Start consensus engine
+        start_task = asyncio.create_task(self.consensus_engine.start())
+        self._background_tasks.add(start_task)
+        start_task.add_done_callback(self._background_tasks.discard)
+
         logger.info("zenoh_router_started")
 
     def stop(self) -> None:
@@ -68,6 +80,11 @@ class ZenohRouter:
         if self.liveliness_subscriber is not None:
             self.liveliness_subscriber.undeclare()  # type: ignore[no-untyped-call]
             self.liveliness_subscriber = None
+
+        # Stop consensus engine
+        stop_task = asyncio.create_task(self.consensus_engine.stop())
+        self._background_tasks.add(stop_task)
+        stop_task.add_done_callback(self._background_tasks.discard)
 
         self.session.close()  # type: ignore[no-untyped-call]
         self.session = None

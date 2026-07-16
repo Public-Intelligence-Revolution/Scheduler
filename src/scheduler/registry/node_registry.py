@@ -1,6 +1,7 @@
 """In-memory node registry for storing and managing compute nodes."""
 
 import asyncio
+from typing import Any
 
 from scheduler.models.heartbeat import Heartbeat
 from scheduler.models.node import Node
@@ -20,16 +21,22 @@ class NodeRegistry:
         self._nodes: dict[str, Node] = {}
         self._heartbeats: dict[str, Heartbeat] = {}
         self._dampeners: dict[str, float] = {}
+        self.consensus_engine: Any = None
 
     async def register(self, node: Node) -> None:
         """Register a new node.
 
-        Args:
-            node: The node to register.
-
-        Raises:
-            ValueError: If a node with the same node_id is already registered.
+        If a consensus engine is active, propose the change atomically.
+        Otherwise, perform local registration immediately.
         """
+        engine = getattr(self, "consensus_engine", None)
+        if engine is not None and engine.is_active():
+            await engine.propose("register", node.model_dump())
+        else:
+            await self.local_register(node)
+
+    async def local_register(self, node: Node) -> None:
+        """Actually perform local registration of the node."""
         async with self._lock:
             if node.node_id in self._nodes:
                 msg = f"Node already registered: {node.node_id}"
@@ -40,17 +47,22 @@ class NodeRegistry:
     async def unregister(self, node_id: str) -> None:
         """Remove a node and its heartbeat from the registry.
 
-        Args:
-            node_id: The ID of the node to remove.
-
-        Raises:
-            ValueError: If the node_id is not registered.
+        If a consensus engine is active, propose the change atomically.
+        Otherwise, perform local unregistration immediately.
         """
+        engine = getattr(self, "consensus_engine", None)
+        if engine is not None and engine.is_active():
+            await engine.propose("unregister", {"node_id": node_id})
+        else:
+            await self.local_unregister(node_id)
+
+    async def local_unregister(self, node_id: str) -> None:
+        """Actually perform local unregistration of the node."""
         async with self._lock:
             if node_id not in self._nodes:
                 msg = f"Node not found: {node_id}"
                 raise ValueError(msg)
-            del self._nodes[node_id]
+            self._nodes.pop(node_id, None)
             self._heartbeats.pop(node_id, None)
             self._dampeners.pop(node_id, None)
 
@@ -177,12 +189,17 @@ class NodeRegistry:
     async def unregister_node(self, node_id: str) -> None:
         """Unregister a node and clear its dynamic herd dampeners.
 
-        This method is idempotent and does not raise an error if the node
-        is not found, allowing clean self-correcting pool resize operations.
-
-        Args:
-            node_id: The ID of the node to unregister.
+        If a consensus engine is active, propose the change atomically.
+        Otherwise, perform local unregistration immediately.
         """
+        engine = getattr(self, "consensus_engine", None)
+        if engine is not None and engine.is_active():
+            await engine.propose("unregister_node", {"node_id": node_id})
+        else:
+            await self.local_unregister_node(node_id)
+
+    async def local_unregister_node(self, node_id: str) -> None:
+        """Actually perform local unregistration of the node (safe if not present)."""
         async with self._lock:
             self._nodes.pop(node_id, None)
             self._heartbeats.pop(node_id, None)

@@ -65,9 +65,13 @@ Complete Scheduler Version 1 before implementing Version 2 features.
 - Declared Zenoh Liveliness subscriber monitoring `public-intelligence/net/liveliness/*` on `ZenohRouter` startup.
 - Processed DELETE events (deathrattles) in `ZenohRouter` callback to unregister dropped nodes from `NodeRegistry` asynchronously.
 - Wrote integration tests in `tests/test_zenoh_integration.py` (`test_zenoh_liveliness_deathrattle`) simulating node session drops and asserting automatic registry unregistration.
+- Implemented `RaftConsensusEngine` in `src/scheduler/core/consensus.py` running a lightweight Raft consensus loop over Zenoh channels.
+- Intercepted `register`, `unregister`, and `unregister_node` mutations in `NodeRegistry` to propose them through consensus, waiting for majority quorum before applying locally.
+- Integrated consensus engine start/stop lifecycle into `ZenohRouter`.
+- Added integration test suite in `tests/test_consensus.py` simulating 3 schedulers, checking leader election, log replication, and minority partition blocking.
 
 ### Metrics Achieved
-- Verification suite (Ruff, MyPy src/tests, PyTest) passes with 100% success (0 errors, 82/82 unit & integration tests passing).
+- Verification suite (Ruff, MyPy src/tests, PyTest) passes with 100% success (0 errors, 83/83 unit & integration tests passing).
 
 ### Next Priority Items
 - Persistent Registry integration (Phase 0.2)
