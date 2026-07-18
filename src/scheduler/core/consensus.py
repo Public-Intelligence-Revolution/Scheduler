@@ -122,6 +122,9 @@ class RaftConsensusEngine:
         async with self._lock:
             if not self._is_active:
                 raise RuntimeError("Consensus engine is not active")
+            if not self.peers and self.state != "LEADER":
+                self.state = "LEADER"
+                self.leader_id = self.scheduler_id
 
             term = self.current_term
             entry = {"term": term, "action": action, "data": data}
