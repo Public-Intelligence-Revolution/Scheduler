@@ -30,6 +30,7 @@ class ZenohRouter:
         self.session: zenoh.Session | None = None
         self.subscriber: zenoh.Subscriber[Any] | None = None
         self.liveliness_subscriber: zenoh.Subscriber[Any] | None = None
+        self.telemetry_subscriber: zenoh.Subscriber[Any] | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
 
         # Generate unique scheduler ID and instantiate the consensus engine
@@ -60,6 +61,11 @@ class ZenohRouter:
             "public-intelligence/net/liveliness/*", self._on_liveliness
         )
 
+        # Subscribe to telemetry feed.
+        self.telemetry_subscriber = self.session.declare_subscriber(
+            "public-intelligence/net/nodes/*/telemetry", self._on_telemetry
+        )
+
         # Start consensus engine
         start_task = asyncio.create_task(self.consensus_engine.start())
         self._background_tasks.add(start_task)
@@ -80,6 +86,10 @@ class ZenohRouter:
         if self.liveliness_subscriber is not None:
             self.liveliness_subscriber.undeclare()  # type: ignore[no-untyped-call]
             self.liveliness_subscriber = None
+
+        if self.telemetry_subscriber is not None:
+            self.telemetry_subscriber.undeclare()  # type: ignore[no-untyped-call]
+            self.telemetry_subscriber = None
 
         # Stop consensus engine
         stop_task = asyncio.create_task(self.consensus_engine.stop())
@@ -167,3 +177,45 @@ class ZenohRouter:
         logger.info("zenoh_liveliness_deathrattle_detected", node_id=node_id, key_expr=key_expr)
         await self.registry.unregister_node(node_id)
         logger.info("zenoh_liveliness_cluster_group_resized", node_id=node_id)
+
+    def _on_telemetry(self, sample: zenoh.Sample) -> None:
+        """Callback triggered when telemetry is received on the zenoh session."""
+        if self._loop is None or not self._loop.is_running():
+            return
+
+        try:
+            payload_str = sample.payload.to_string()
+        except AttributeError:
+            try:
+                payload_str = sample.payload.decode("utf-8")  # type: ignore[attr-defined]
+            except (AttributeError, UnicodeDecodeError):
+                payload_str = str(sample.payload)
+
+        self._loop.call_soon_threadsafe(
+            lambda: asyncio.create_task(self._process_telemetry(payload_str, str(sample.key_expr)))
+        )
+
+    async def _process_telemetry(self, payload_str: str, key_expr: str) -> None:
+        """Asynchronously parse and map the hardware health metrics straight into registry."""
+        try:
+            data = json.loads(payload_str)
+        except json.JSONDecodeError as e:
+            logger.error("zenoh_telemetry_json_decode_error", error=str(e), key_expr=key_expr)
+            return
+
+        node_id = data.get("node_id")
+        if not node_id:
+            parts = key_expr.split("/")
+            if len(parts) >= 5:
+                node_id = parts[4]
+
+        if not node_id:
+            logger.warning("zenoh_telemetry_missing_node_id", key_expr=key_expr)
+            return
+
+        # Map the hardware health metrics straight into the active NodeRegistry state metadata
+        if not hasattr(self.registry, "_telemetry"):
+            self.registry._telemetry = {}  # type: ignore[attr-defined]
+
+        self.registry._telemetry[node_id] = data  # type: ignore[attr-defined]
+        logger.info("zenoh_telemetry_mapped", node_id=node_id, key_expr=key_expr)

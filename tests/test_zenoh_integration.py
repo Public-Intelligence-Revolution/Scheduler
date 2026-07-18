@@ -148,3 +148,62 @@ async def test_zenoh_liveliness_deathrattle(test_node: Node, node_id: str) -> No
     finally:
         # 7. Stop ZenohRouter cleanly
         router.stop()
+
+
+@pytest.mark.asyncio
+async def test_zenoh_telemetry_mapping(test_node: Node, node_id: str) -> None:
+    # 1. Create registry and register node
+    registry = NodeRegistry()
+    await registry.register(test_node)
+
+    # Configure Router session to listen on TCP loopback
+    router_config = zenoh.Config()
+    router_config.insert_json5("listen/endpoints", '["tcp/127.0.0.1:7451"]')
+    router_config.insert_json5("scouting/multicast/enabled", "false")
+
+    # 2. Start ZenohRouter
+    router = ZenohRouter(registry, config=router_config)
+    router.start()
+
+    # Configure Publisher session to connect directly to the Router TCP endpoint
+    pub_config = zenoh.Config()
+    pub_config.insert_json5("connect/endpoints", '["tcp/127.0.0.1:7451"]')
+    pub_config.insert_json5("scouting/multicast/enabled", "false")
+
+    try:
+        # 3. Create a local Zenoh session and publisher
+        with zenoh.open(pub_config) as session:
+            pub_key = f"public-intelligence/net/nodes/{node_id}/telemetry"
+            publisher = session.declare_publisher(pub_key)
+
+            await asyncio.sleep(0.2)
+
+            telemetry_data = {
+                "node_id": node_id,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "cpu_utilization": 42.5,
+                "ram_usage_bytes": 10737418240,
+                "gpu_utilization": 20.0,
+                "vram_usage_bytes": 4294967296,
+            }
+
+            publisher.put(json.dumps(telemetry_data))
+            publisher.undeclare()  # type: ignore[no-untyped-call]
+
+        # 4. Wait for background delivery
+        for _ in range(30):
+            if hasattr(registry, "_telemetry") and node_id in registry._telemetry:
+                break
+            await asyncio.sleep(0.05)
+
+        # 5. Verify the telemetry state mapping
+        assert hasattr(registry, "_telemetry"), "Registry does not have _telemetry state"
+        mapped_data = registry._telemetry[node_id]
+        assert mapped_data["node_id"] == node_id
+        assert mapped_data["cpu_utilization"] == 42.5
+        assert mapped_data["ram_usage_bytes"] == 10737418240
+        assert mapped_data["gpu_utilization"] == 20.0
+        assert mapped_data["vram_usage_bytes"] == 4294967296
+
+    finally:
+        router.stop()
