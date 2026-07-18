@@ -178,6 +178,7 @@ async def test_zenoh_telemetry_mapping(test_node: Node, node_id: str) -> None:
 
             await asyncio.sleep(0.2)
 
+            # Plaintext data
             telemetry_data = {
                 "node_id": node_id,
                 "timestamp": datetime.now(UTC).isoformat(),
@@ -186,8 +187,37 @@ async def test_zenoh_telemetry_mapping(test_node: Node, node_id: str) -> None:
                 "gpu_utilization": 20.0,
                 "vram_usage_bytes": 4294967296,
             }
+            plaintext = json.dumps(telemetry_data)
 
-            publisher.put(json.dumps(telemetry_data))
+            # Encrypt and sign using pre-shared key
+            import base64
+            import hashlib
+            import hmac
+
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+            secret_key = "pi_telemetry_secure_default_secret_key"
+            secret_bytes = secret_key.encode("utf-8")
+            enc_key = hashlib.sha256(secret_bytes + b"-encryption").digest()
+            hmac_key = hashlib.sha256(secret_bytes + b"-hmac").digest()
+
+            aesgcm = AESGCM(enc_key)
+            iv = b"\x00" * 12
+            ciphertext = aesgcm.encrypt(iv, plaintext.encode("utf-8"), None)
+
+            iv_b64 = base64.b64encode(iv).decode("utf-8")
+            ciphertext_b64 = base64.b64encode(ciphertext).decode("utf-8")
+
+            message_to_sign = f"{iv_b64}:{ciphertext_b64}".encode()
+            sig = hmac.new(hmac_key, message_to_sign, hashlib.sha256).hexdigest()
+
+            envelope = {
+                "iv": iv_b64,
+                "ciphertext": ciphertext_b64,
+                "signature": sig,
+            }
+
+            publisher.put(json.dumps(envelope))
             publisher.undeclare()  # type: ignore[no-untyped-call]
 
         # 4. Wait for background delivery
@@ -204,6 +234,82 @@ async def test_zenoh_telemetry_mapping(test_node: Node, node_id: str) -> None:
         assert mapped_data["ram_usage_bytes"] == 10737418240
         assert mapped_data["gpu_utilization"] == 20.0
         assert mapped_data["vram_usage_bytes"] == 4294967296
+
+    finally:
+        router.stop()
+
+
+@pytest.mark.asyncio
+async def test_zenoh_telemetry_tampered_payload_rejection(test_node: Node, node_id: str) -> None:
+    # 1. Create registry and register node
+    registry = NodeRegistry()
+    await registry.register(test_node)
+
+    # Configure Router session to listen on TCP loopback
+    router_config = zenoh.Config()
+    router_config.insert_json5("listen/endpoints", '["tcp/127.0.0.1:7452"]')
+    router_config.insert_json5("scouting/multicast/enabled", "false")
+
+    # 2. Start ZenohRouter
+    router = ZenohRouter(registry, config=router_config)
+    router.start()
+
+    # Configure Publisher session to connect directly to the Router TCP endpoint
+    pub_config = zenoh.Config()
+    pub_config.insert_json5("connect/endpoints", '["tcp/127.0.0.1:7452"]')
+    pub_config.insert_json5("scouting/multicast/enabled", "false")
+
+    try:
+        # 3. Create a local Zenoh session and publisher
+        with zenoh.open(pub_config) as session:
+            pub_key = f"public-intelligence/net/nodes/{node_id}/telemetry"
+            publisher = session.declare_publisher(pub_key)
+
+            await asyncio.sleep(0.2)
+
+            # Plaintext data
+            telemetry_data = {
+                "node_id": node_id,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "cpu_utilization": 99.9,
+            }
+            plaintext = json.dumps(telemetry_data)
+
+            # Encrypt and sign using pre-shared key
+            import base64
+            import hashlib
+
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+            secret_key = "pi_telemetry_secure_default_secret_key"
+            secret_bytes = secret_key.encode("utf-8")
+            enc_key = hashlib.sha256(secret_bytes + b"-encryption").digest()
+            hashlib.sha256(secret_bytes + b"-hmac").digest()
+
+            aesgcm = AESGCM(enc_key)
+            iv = b"\x00" * 12
+            ciphertext = aesgcm.encrypt(iv, plaintext.encode("utf-8"), None)
+
+            iv_b64 = base64.b64encode(iv).decode("utf-8")
+            ciphertext_b64 = base64.b64encode(ciphertext).decode("utf-8")
+
+            # Tampered signature
+            sig = "invalidhmacsignaturetoken12345"
+
+            envelope = {
+                "iv": iv_b64,
+                "ciphertext": ciphertext_b64,
+                "signature": sig,
+            }
+
+            publisher.put(json.dumps(envelope))
+            publisher.undeclare()  # type: ignore[no-untyped-call]
+
+        # 4. Wait a short moment
+        await asyncio.sleep(0.5)
+
+        # 5. Verify the telemetry state remains unmutated (rejected payload)
+        assert not hasattr(registry, "_telemetry") or node_id not in registry._telemetry
 
     finally:
         router.stop()

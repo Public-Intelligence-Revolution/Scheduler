@@ -196,11 +196,62 @@ class ZenohRouter:
         )
 
     async def _process_telemetry(self, payload_str: str, key_expr: str) -> None:
-        """Asynchronously parse and map the hardware health metrics straight into registry."""
+        """Asynchronously decrypt and map the hardware health metrics straight into registry."""
+        import base64
+        import hashlib
+        import hmac
+        import os
+
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
         try:
-            data = json.loads(payload_str)
+            envelope = json.loads(payload_str)
         except json.JSONDecodeError as e:
             logger.error("zenoh_telemetry_json_decode_error", error=str(e), key_expr=key_expr)
+            return
+
+        iv_b64 = envelope.get("iv")
+        ciphertext_b64 = envelope.get("ciphertext")
+        sig = envelope.get("signature")
+
+        if not iv_b64 or not ciphertext_b64 or not sig:
+            logger.warning("zenoh_telemetry_malformed_envelope", key_expr=key_expr)
+            return
+
+        secret_key = os.environ.get(
+            "TELEMETRY_SECRET_KEY", "pi_telemetry_secure_default_secret_key"
+        )
+
+        # Derive keys
+        secret_bytes = secret_key.encode("utf-8")
+        enc_key = hashlib.sha256(secret_bytes + b"-encryption").digest()
+        hmac_key = hashlib.sha256(secret_bytes + b"-hmac").digest()
+
+        # Verify HMAC signature first
+        message_to_verify = f"{iv_b64}:{ciphertext_b64}".encode()
+        expected_sig = hmac.new(hmac_key, message_to_verify, hashlib.sha256).hexdigest()
+
+        if not hmac.compare_digest(sig, expected_sig):
+            logger.error(
+                "security_breach_warning",
+                reason="HMAC signature verification failed. Tampered or unauthorized payload.",
+                key_expr=key_expr,
+            )
+            return
+
+        # Decrypt payload
+        try:
+            iv = base64.b64decode(iv_b64)
+            ciphertext = base64.b64decode(ciphertext_b64)
+            aesgcm = AESGCM(enc_key)
+            plaintext = aesgcm.decrypt(iv, ciphertext, None).decode("utf-8")
+            data = json.loads(plaintext)
+        except Exception as e:
+            logger.error(
+                "security_breach_warning",
+                reason=f"Decryption failed or payload altered: {e}",
+                key_expr=key_expr,
+            )
             return
 
         node_id = data.get("node_id")
@@ -215,7 +266,7 @@ class ZenohRouter:
 
         # Map the hardware health metrics straight into the active NodeRegistry state metadata
         if not hasattr(self.registry, "_telemetry"):
-            self.registry._telemetry = {}  # type: ignore[attr-defined]
+            self.registry._telemetry = {}
 
-        self.registry._telemetry[node_id] = data  # type: ignore[attr-defined]
+        self.registry._telemetry[node_id] = data
         logger.info("zenoh_telemetry_mapped", node_id=node_id, key_expr=key_expr)

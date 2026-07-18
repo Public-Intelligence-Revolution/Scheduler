@@ -21,6 +21,7 @@ class NodeRegistry:
         self._nodes: dict[str, Node] = {}
         self._heartbeats: dict[str, Heartbeat] = {}
         self._dampeners: dict[str, float] = {}
+        self._telemetry: dict[str, Any] = {}
         self.consensus_engine: Any = None
 
     async def register(self, node: Node) -> None:
@@ -120,6 +121,7 @@ class NodeRegistry:
             self._nodes.clear()
             self._heartbeats.clear()
             self._dampeners.clear()
+            self._telemetry.clear()
 
     async def count(self) -> int:
         """Return the number of registered nodes.

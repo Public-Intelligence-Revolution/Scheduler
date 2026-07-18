@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-settings>=2.4.0",
     "structlog>=24.1.0",
     "eclipse-zenoh",
+    "cryptography",
 ]
 
 [project.optional-dependencies]
