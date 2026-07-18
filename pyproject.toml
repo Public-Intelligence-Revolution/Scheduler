@@ -16,6 +16,7 @@ dependencies = [
     "structlog>=24.1.0",
     "eclipse-zenoh",
     "cryptography",
+    "pyjwt",
 ]
 
 [project.optional-dependencies]
