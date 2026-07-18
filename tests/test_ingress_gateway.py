@@ -42,6 +42,26 @@ def setup_test_app(key_pair: tuple[rsa.RSAPrivateKey, str]) -> MagicMock:
     mock_consensus.is_active.return_value = True
     mock_consensus.propose = AsyncMock()
     app.state.registry.consensus_engine = mock_consensus
+
+    # Reset registry and add mock node
+    app.state.registry._nodes.clear()
+    app.state.registry._heartbeats.clear()
+    app.state.registry._telemetry.clear()
+
+    from scheduler.models.node import GPUInfo, Node
+
+    mock_node = Node(
+        node_id="test-node",
+        hostname="localhost",
+        ip_address="127.0.0.1",
+        region="us-east",
+        gpu=GPUInfo(name="RTX 4090", vram_total_gb=24.0, vram_available_gb=20.0),
+        cpu_cores=8,
+        ram_total_gb=32.0,
+        available_models=["llama3"],
+    )
+    app.state.registry._nodes["test-node"] = mock_node
+
     return mock_consensus
 
 
@@ -127,8 +147,18 @@ def test_ingress_submit_authorized_handoff(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"status": "committed", "task_id": "task-abc"}
-    mock_consensus.propose.assert_called_once_with("replicate_model", {"model_name": "llama3"})
+    res_json = response.json()
+    assert res_json["status"] == "scheduled"
+    assert res_json["task_id"] == "task-abc"
+    assert res_json["node_id"] == "test-node"
+    assert "tx_hash" in res_json
+
+    mock_consensus.propose.assert_called_once()
+    called_args = mock_consensus.propose.call_args[0]
+    assert called_args[0] == "allocate_task"
+    assert called_args[1]["task_id"] == "task-abc"
+    assert called_args[1]["node_id"] == "test-node"
+    assert "tx_hash" in called_args[1]
 
 
 def test_ingress_token_bucket_rate_limiter(

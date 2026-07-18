@@ -59,6 +59,12 @@ def create_app() -> FastAPI:
     app.state.registry = NodeRegistry()
     app.state.rate_limiter = TokenBucketLimiter()
 
+    from scheduler.core.engine import SchedulingEngine
+    from scheduler.core.matchmaker import CapabilityMatchmaker
+
+    strategy = CapabilityMatchmaker(app.state.registry)
+    app.state.scheduling_engine = SchedulingEngine(app.state.registry, strategy)
+
     app.include_router(health_router)
     app.include_router(nodes_router)
     app.include_router(heartbeat_router)

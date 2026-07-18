@@ -82,7 +82,8 @@ async def submit_task(
 ) -> dict[str, str]:
     """Dedicated ingress endpoint to submit tasks to the consensus log.
 
-    Secured by JWT authentication and rate-limited via a Token Bucket algorithm.
+    Secured by JWT authentication, rate-limited, scheduled using two-stage Strategy,
+    and committed to consensus log.
 
     Args:
         request: FastAPI Request context.
@@ -90,7 +91,7 @@ async def submit_task(
         payload: Decoded JWT claims dict (via verify_jwt dependency).
 
     Returns:
-        Status object signaling log commitment.
+        Status object signaling scheduled task tracking info.
     """
     tenant_id = payload["tenant_id"]
 
@@ -101,24 +102,59 @@ async def submit_task(
         if not allowed:
             logger.warning("ingress_rate_limit_tripped", tenant_id=tenant_id)
             raise HTTPException(
-                status_code=429, detail="Rate limit exceeded. Multi-tenant quota exhausted."
+                status_code=429,
+                detail="Rate limit exceeded. Multi-tenant quota exhausted.",
             )
 
-    # 2. Consensus Engine Retrieval
+    # 2. Scheduling Engine Retrieval & Execution
+    scheduling_engine = getattr(request.app.state, "scheduling_engine", None)
+    if scheduling_engine is None:
+        logger.error("ingress_scheduling_engine_uninitialized")
+        raise HTTPException(
+            status_code=500, detail="Scheduling engine is uninitialized."
+        )
+
+    task_data = {
+        "task_id": task.task_id,
+        "requirements": {
+            "model_name": task.data.get("model_name") or task.data.get("model"),
+            "min_vram_gb": task.data.get("min_vram_gb") or task.data.get("vram"),
+            "backend_type": task.data.get("backend_type"),
+        },
+    }
+
+    try:
+        tx_hash, node_id = await scheduling_engine.schedule_task(task_data)
+    except ValueError as e:
+        logger.warning("ingress_scheduling_failed", error=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    # 3. Consensus Engine Log Commitment
     registry = getattr(request.app.state, "registry", None)
     consensus_engine = getattr(registry, "consensus_engine", None)
 
-    if not consensus_engine or not consensus_engine.is_active():
-        logger.error("ingress_consensus_engine_offline")
-        raise HTTPException(
-            status_code=503, detail="Control plane consensus engine is currently offline."
-        )
+    if consensus_engine is not None and consensus_engine.is_active():
+        try:
+            await consensus_engine.propose(
+                "allocate_task",
+                {
+                    "task_id": task.task_id,
+                    "node_id": node_id,
+                    "tx_hash": tx_hash,
+                    "action": task.action,
+                    "data": task.data,
+                },
+            )
+        except Exception as e:
+            logger.error("ingress_consensus_proposal_failed", error=str(e))
+            raise HTTPException(
+                status_code=500,
+                detail=f"Consensus log commitment failed: {e}",
+            ) from e
 
-    # 3. Propagate entry to Raft cluster log
-    try:
-        await consensus_engine.propose(task.action, task.data)
-    except Exception as e:
-        logger.error("ingress_consensus_proposal_failed", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Consensus log commitment failed: {e}") from e
-
-    return {"status": "committed", "task_id": task.task_id}
+    return {
+        "status": "scheduled",
+        "task_id": task.task_id,
+        "node_id": node_id,
+        "tx_hash": tx_hash,
+    }

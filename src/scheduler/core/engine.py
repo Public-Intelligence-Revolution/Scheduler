@@ -21,7 +21,7 @@ class SchedulingEngine:
         self.registry = registry
         self.strategy = strategy
 
-    async def schedule_task(self, task: dict[str, Any]) -> str:
+    async def schedule_task(self, task: dict[str, Any]) -> tuple[str, str]:
         """Schedule an incoming task to the highest-scoring eligible node.
 
         Stages the task requirements through capability filtering and telemetry-based
@@ -31,7 +31,7 @@ class SchedulingEngine:
             task: Dict detailing the task parameters and requirements.
 
         Returns:
-            A SHA-256 transaction hash representing the task allocation event.
+            A tuple of (transaction_hash, node_id).
 
         Raises:
             ValueError: If no active nodes satisfy the task hard constraints.
@@ -63,4 +63,4 @@ class SchedulingEngine:
         tx_raw = f"{node_id}:{task_id}:{score}"
         tx_hash = hashlib.sha256(tx_raw.encode("utf-8")).hexdigest()
 
-        return tx_hash
+        return tx_hash, node_id

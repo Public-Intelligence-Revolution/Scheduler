@@ -134,9 +134,10 @@ async def test_scheduling_engine_routing(test_nodes: list[Node]) -> None:
     }
 
     # Should select node-1 due to lower CPU utilization
-    tx_hash = await engine.schedule_task(task)
+    tx_hash, selected_node_id = await engine.schedule_task(task)
     assert isinstance(tx_hash, str)
     assert len(tx_hash) == 64  # Valid SHA-256 hex digest length
+    assert selected_node_id == "node-1"
 
     # Verify queue depth is dynamically updated in NodeRegistry
     assert registry._telemetry["node-1"]["queue_depth"] == 1
