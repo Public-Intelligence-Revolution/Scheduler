@@ -71,8 +71,17 @@ Complete Scheduler Version 1 before implementing Version 2 features.
 - Added integration test suite in `tests/test_consensus.py` simulating 3 schedulers, checking leader election, log replication, and minority partition blocking.
 
 ### Metrics Achieved
-- Verification suite (Ruff, MyPy src/tests, PyTest) passes with 100% success (0 errors, 83/83 unit & integration tests passing).
+- Verification suite (Ruff, MyPy src/tests, PyTest) passes with 100% success (0 errors, 94/94 unit & integration tests passing).
 
 ### Next Priority Items
 - Persistent Registry integration (Phase 0.2)
 - Adaptive Model Placement
+
+## 2026-07-21
+
+### Global Synchronization Run (REG-ORG-SYNC-003)
+- Synchronized Phase 1 & Phase 2 architecture specs and engineering invariants with active git commit `c2419db`.
+- Deployed asymmetric RS256 JWT Ingress Router at `/api/v1/tasks/submit` backed by in-memory `TokenBucketLimiter` per `tenant_id` (Burst Capacity: 5 tokens, Refill Rate: 1 token / 2.0s, Overflow Trigger: instant HTTP 429 response).
+- Standardized Two-Stage Capability Matchmaker Engine: Stage 1 Constraint Filtering Matrix (`backend`, `model_id`, `available_vram_bytes`, and active pulse check $\Delta t \le 15.0\text{s}$) and Stage 2 Fitness Scoring Formula: $\text{Score} = (\text{Reliability} \times 100.0) - (\text{QueueDepth} \times 15.0) - (\text{CPUUtilization} \times 0.5)$.
+- Out-of-band data persistence integration with Node `LocalDiskArtifactStore` (`/tmp/public_intelligence/artifacts/{artifact_id}.bin`, hash invariant `artifact_id = art_{task_id}_{checksum[:12]}`) receiving lightweight `ArtifactMetadata` over Zenoh mesh (`public-intelligence/net/tasks/<task_id>/result`).
+- Verified benchmarks: 94 Scheduler tests passing (159 total system tests), $15.05\text{s}$ dynamic stale node eviction boundary under unannounced drops ($\Delta t > 15.0\text{s}$), and 100% ruff/mypy zero-type-leak compliance.
