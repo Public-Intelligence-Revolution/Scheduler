@@ -110,9 +110,7 @@ async def submit_task(
     scheduling_engine = getattr(request.app.state, "scheduling_engine", None)
     if scheduling_engine is None:
         logger.error("ingress_scheduling_engine_uninitialized")
-        raise HTTPException(
-            status_code=500, detail="Scheduling engine is uninitialized."
-        )
+        raise HTTPException(status_code=500, detail="Scheduling engine is uninitialized.")
 
     task_data = {
         "task_id": task.task_id,
