@@ -30,34 +30,23 @@
 
 ---
 
-## Version 0.2
+## Version 0.2 (Next Baseline — Phase 3)
 
+[ ] Early CI/CD Agent Code Auditors (automated lint/type check agents validating MyPy strict typing, ruff layout compliance, and pytest regression suites on every PR)
 [ ] Persistent Registry
-
 [ ] Adaptive Model Placement
-
-[ ] Metrics
-
-[ ] Dashboard
-
-[ ] Health Monitoring
+[ ] Network Performance Monitoring
 
 ---
 
-## Version 0.3
+## Version 0.3 (Accelerated — Phase 3.5 / 4)
 
-[ ] Geographic Scheduling
-
-[ ] Fault Tolerance
-
-[ ] Load Prediction
-
-[ ] Intelligent Placement
+[ ] Web/Desktop Visual Dashboard (One-click host & interactive prompt playground)
+[ ] P2P Model Parallelism across consumer GPUs (tensor layer sharding & sequential streaming)
+[ ] Fault Tolerance & Load Prediction
 
 ---
 
-## Version 1.0
+## Version 1.0 (Full Vision — Phase 5)
 
-[ ] Distributed AI Scheduler
-
-[ ] Production Ready
+[ ] Fully autonomous self-improving fabric (agents analyze GitHub issues, run WAN tests, and merge verified PRs)
