@@ -44,11 +44,13 @@ Completed
 - Normalized scoring formula to prevent VRAM skew
 - Atomic scheduling dampener to prevent herd effect under concurrent bursts
 - Antigravity Sub-Agent Execution Governance (`AGENTS.md`)
+- Global P2P WAN Router Configuration (`ZENOH_LISTEN_ENDPOINTS`, `ZENOH_PEER_ENDPOINTS`, `ZENOH_MULTICAST_SCOUTING`)
+- `ZenohRouter` auto-configuration for WAN router and peer mode
 
 Current Task
 
-Scheduler v1.0.0 & Phase 3 realized. Core request scheduler, load balancing, consensus ledger, and security layers are fully operational. Transitioning to Phase 4 development.
+Phase 4 Global P2P WAN Networking underway. Core router configuration, peer endpoint connection profiles, and client/router mode toggling operational across WAN networks.
 
 Next Feature
 
-Phase 4 features: Global P2P WAN Network Discovery & Node Join, NAT Traversal, Pipeline Parallelism (Layer Sharding), followed by Phase 4.5 Visual Control Plane.
+Phase 4 features: NAT Traversal, Pipeline Parallelism (Layer Sharding), followed by Phase 4.5 Visual Control Plane (Web Dashboard & Host Installer).

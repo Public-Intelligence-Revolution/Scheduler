@@ -1,9 +1,11 @@
 """FastAPI application factory and lifespan management."""
 
+import json
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
+import zenoh
 from fastapi import FastAPI
 
 from scheduler import __version__
@@ -34,7 +36,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     # Initialize and start ZenohRouter
-    zenoh_router = ZenohRouter(app.state.registry)
+    zenoh_config = zenoh.Config()
+    if settings.zenoh_listen_endpoints:
+        zenoh_config.insert_json5("listen/endpoints", json.dumps(settings.zenoh_listen_endpoints))
+        zenoh_config.insert_json5("mode", '"router"')
+    if settings.zenoh_peer_endpoints:
+        zenoh_config.insert_json5("connect/endpoints", json.dumps(settings.zenoh_peer_endpoints))
+    if not settings.zenoh_multicast_scouting:
+        zenoh_config.insert_json5("scouting/multicast/enabled", "false")
+
+    zenoh_router = ZenohRouter(app.state.registry, config=zenoh_config)
     zenoh_router.start()
     app.state.zenoh_router = zenoh_router
 

@@ -26,7 +26,21 @@ class ZenohRouter:
             config: Optional Zenoh session configuration.
         """
         self.registry = registry
-        self.config = config or zenoh.Config()
+        if config is None:
+            from scheduler.core.config import get_settings
+
+            settings = get_settings()
+            config = zenoh.Config()
+            if settings.zenoh_listen_endpoints:
+                config.insert_json5(
+                    "listen/endpoints", json.dumps(settings.zenoh_listen_endpoints)
+                )
+                config.insert_json5("mode", '"router"')
+            if settings.zenoh_peer_endpoints:
+                config.insert_json5("connect/endpoints", json.dumps(settings.zenoh_peer_endpoints))
+            if not settings.zenoh_multicast_scouting:
+                config.insert_json5("scouting/multicast/enabled", "false")
+        self.config = config
         self.session: zenoh.Session | None = None
         self.subscriber: zenoh.Subscriber[Any] | None = None
         self.liveliness_subscriber: zenoh.Subscriber[Any] | None = None

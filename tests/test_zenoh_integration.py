@@ -313,3 +313,34 @@ async def test_zenoh_telemetry_tampered_payload_rejection(test_node: Node, node_
 
     finally:
         router.stop()
+
+
+def test_zenoh_router_wan_configuration() -> None:
+    from unittest.mock import MagicMock, patch
+
+    from scheduler.core.config import Settings
+
+    wan_settings = Settings(
+        zenoh_listen_endpoints=["tcp/0.0.0.0:7447"],
+        zenoh_peer_endpoints=["tcp/scheduler2:7447"],
+        zenoh_multicast_scouting=False,
+    )
+
+    with (
+        patch("scheduler.core.config.get_settings", return_value=wan_settings),
+        patch("zenoh.Config") as mock_config_cls,
+    ):
+        mock_config = MagicMock()
+        mock_config_cls.return_value = mock_config
+
+        registry = NodeRegistry()
+        ZenohRouter(registry)
+
+        mock_config.insert_json5.assert_any_call(
+            "listen/endpoints", json.dumps(["tcp/0.0.0.0:7447"])
+        )
+        mock_config.insert_json5.assert_any_call("mode", '"router"')
+        mock_config.insert_json5.assert_any_call(
+            "connect/endpoints", json.dumps(["tcp/scheduler2:7447"])
+        )
+        mock_config.insert_json5.assert_any_call("scouting/multicast/enabled", "false")
