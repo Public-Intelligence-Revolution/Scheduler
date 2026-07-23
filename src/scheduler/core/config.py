@@ -60,12 +60,27 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SCHEDULER_ZENOH_PEER_ENDPOINTS", "ZENOH_PEER_ENDPOINTS"),
         description="Zenoh WAN endpoints of peer Schedulers.",
     )
+    bootstrap_routers: list[str] = Field(
+        default_factory=lambda: ["tcp/bootstrap.public-intelligence.net:7447"],
+        validation_alias=AliasChoices("SCHEDULER_BOOTSTRAP_ROUTERS", "BOOTSTRAP_ROUTERS"),
+        description="Fallback Zenoh bootstrap routers for dynamic WAN peer join.",
+    )
+    zenoh_gossip_scouting: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("SCHEDULER_ZENOH_GOSSIP_SCOUTING", "ZENOH_GOSSIP_SCOUTING"),
+        description="Enable/disable Zenoh gossip scouting for dynamic WAN peer join.",
+    )
     zenoh_multicast_scouting: bool = Field(
         default=True,
         description="Enable/disable local LAN multicast scouting.",
     )
 
-    @field_validator("zenoh_listen_endpoints", "zenoh_peer_endpoints", mode="before")
+    @field_validator(
+        "zenoh_listen_endpoints",
+        "zenoh_peer_endpoints",
+        "bootstrap_routers",
+        mode="before",
+    )
     @classmethod
     def parse_string_list(cls, v: Any) -> list[str]:
         """Parse list of strings from comma-separated string, JSON, or list."""
@@ -109,7 +124,11 @@ class Settings(BaseSettings):
             orig_env_decode = env_settings.decode_complex_value
 
             def custom_env_decode(field_name: str, field: Any, value: Any) -> Any:
-                if field_name in ("zenoh_listen_endpoints", "zenoh_peer_endpoints"):
+                if field_name in (
+                    "zenoh_listen_endpoints",
+                    "zenoh_peer_endpoints",
+                    "bootstrap_routers",
+                ):
                     try:
                         return json.loads(value)
                     except (ValueError, TypeError, json.JSONDecodeError):
@@ -122,7 +141,11 @@ class Settings(BaseSettings):
             orig_dotenv_decode = dotenv_settings.decode_complex_value
 
             def custom_dotenv_decode(field_name: str, field: Any, value: Any) -> Any:
-                if field_name in ("zenoh_listen_endpoints", "zenoh_peer_endpoints"):
+                if field_name in (
+                    "zenoh_listen_endpoints",
+                    "zenoh_peer_endpoints",
+                    "bootstrap_routers",
+                ):
                     try:
                         return json.loads(value)
                     except (ValueError, TypeError, json.JSONDecodeError):

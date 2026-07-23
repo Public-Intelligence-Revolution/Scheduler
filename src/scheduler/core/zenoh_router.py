@@ -36,10 +36,23 @@ class ZenohRouter:
                     "listen/endpoints", json.dumps(settings.zenoh_listen_endpoints)
                 )
                 config.insert_json5("mode", '"router"')
-            if settings.zenoh_peer_endpoints:
-                config.insert_json5("connect/endpoints", json.dumps(settings.zenoh_peer_endpoints))
+
+            connect_endpoints: list[str] = []
+            candidates: list[str] = list(settings.zenoh_peer_endpoints) + list(
+                settings.bootstrap_routers
+            )
+            for ep in candidates:
+                if ep and ep not in connect_endpoints:
+                    connect_endpoints.append(ep)
+
+            if connect_endpoints:
+                config.insert_json5("connect/endpoints", json.dumps(connect_endpoints))
+
             if not settings.zenoh_multicast_scouting:
                 config.insert_json5("scouting/multicast/enabled", "false")
+
+            gossip_enabled = "true" if settings.zenoh_gossip_scouting else "false"
+            config.insert_json5("scouting/gossip/enabled", gossip_enabled)
         self.config = config
         self.session: zenoh.Session | None = None
         self.subscriber: zenoh.Subscriber[Any] | None = None

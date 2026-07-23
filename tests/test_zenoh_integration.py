@@ -323,7 +323,9 @@ def test_zenoh_router_wan_configuration() -> None:
     wan_settings = Settings(
         zenoh_listen_endpoints=["tcp/0.0.0.0:7447"],
         zenoh_peer_endpoints=["tcp/scheduler2:7447"],
+        bootstrap_routers=["tcp/bootstrap.public-intelligence.net:7447"],
         zenoh_multicast_scouting=False,
+        zenoh_gossip_scouting=True,
     )
 
     with (
@@ -341,6 +343,42 @@ def test_zenoh_router_wan_configuration() -> None:
         )
         mock_config.insert_json5.assert_any_call("mode", '"router"')
         mock_config.insert_json5.assert_any_call(
-            "connect/endpoints", json.dumps(["tcp/scheduler2:7447"])
+            "connect/endpoints",
+            json.dumps(
+                [
+                    "tcp/scheduler2:7447",
+                    "tcp/bootstrap.public-intelligence.net:7447",
+                ]
+            ),
         )
         mock_config.insert_json5.assert_any_call("scouting/multicast/enabled", "false")
+        mock_config.insert_json5.assert_any_call("scouting/gossip/enabled", "true")
+
+
+def test_zenoh_router_bootstrap_and_gossip_configuration() -> None:
+    from unittest.mock import MagicMock, patch
+
+    from scheduler.core.config import Settings
+
+    bootstrap_settings = Settings(
+        zenoh_listen_endpoints=["tcp/0.0.0.0:7447"],
+        zenoh_peer_endpoints=[],
+        bootstrap_routers=["tcp/bootstrap.public-intelligence.net:7447"],
+        zenoh_gossip_scouting=False,
+    )
+
+    with (
+        patch("scheduler.core.config.get_settings", return_value=bootstrap_settings),
+        patch("zenoh.Config") as mock_config_cls,
+    ):
+        mock_config = MagicMock()
+        mock_config_cls.return_value = mock_config
+
+        registry = NodeRegistry()
+        ZenohRouter(registry)
+
+        mock_config.insert_json5.assert_any_call(
+            "connect/endpoints",
+            json.dumps(["tcp/bootstrap.public-intelligence.net:7447"]),
+        )
+        mock_config.insert_json5.assert_any_call("scouting/gossip/enabled", "false")
