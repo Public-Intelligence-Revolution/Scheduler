@@ -351,3 +351,23 @@ class TestHeartbeatUpdates:
 
         await registry.unregister("1")
         assert await registry.get_heartbeat("1") is None
+
+    async def test_unregister_cleans_telemetry(self, gpu: GPUInfo):
+        registry = NodeRegistry()
+        node = _make_node("1", gpu)
+        await registry.register(node)
+        registry._telemetry["1"] = {"cpu_utilization": 50.0}
+        assert "1" in registry._telemetry
+
+        await registry.unregister("1")
+        assert "1" not in registry._telemetry
+
+    async def test_unregister_node_cleans_telemetry(self, gpu: GPUInfo):
+        registry = NodeRegistry()
+        node = _make_node("2", gpu)
+        await registry.register(node)
+        registry._telemetry["2"] = {"cpu_utilization": 50.0}
+        assert "2" in registry._telemetry
+
+        await registry.unregister_node("2")
+        assert "2" not in registry._telemetry

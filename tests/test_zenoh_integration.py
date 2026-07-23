@@ -315,6 +315,148 @@ async def test_zenoh_telemetry_tampered_payload_rejection(test_node: Node, node_
         router.stop()
 
 
+@pytest.mark.asyncio
+async def test_zenoh_telemetry_stale_timestamp_rejection(test_node: Node, node_id: str) -> None:
+    from datetime import timedelta
+
+    registry = NodeRegistry()
+    await registry.register(test_node)
+
+    router_config = zenoh.Config()
+    router_config.insert_json5("listen/endpoints", '["tcp/127.0.0.1:7453"]')
+    router_config.insert_json5("scouting/multicast/enabled", "false")
+
+    router = ZenohRouter(registry, config=router_config)
+    router.start()
+
+    pub_config = zenoh.Config()
+    pub_config.insert_json5("connect/endpoints", '["tcp/127.0.0.1:7453"]')
+    pub_config.insert_json5("scouting/multicast/enabled", "false")
+
+    try:
+        with zenoh.open(pub_config) as session:
+            pub_key = f"public-intelligence/net/nodes/{node_id}/telemetry"
+            publisher = session.declare_publisher(pub_key)
+
+            await asyncio.sleep(0.2)
+
+            stale_time = datetime.now(UTC) - timedelta(seconds=35)
+            telemetry_data = {
+                "node_id": node_id,
+                "timestamp": stale_time.isoformat(),
+                "cpu_utilization": 50.0,
+            }
+            plaintext = json.dumps(telemetry_data)
+
+            import base64
+            import hashlib
+            import hmac
+
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+            secret_key = "pi_telemetry_secure_default_secret_key"
+            secret_bytes = secret_key.encode("utf-8")
+            enc_key = hashlib.sha256(secret_bytes + b"-encryption").digest()
+            hmac_key = hashlib.sha256(secret_bytes + b"-hmac").digest()
+
+            aesgcm = AESGCM(enc_key)
+            iv = b"\x00" * 12
+            ciphertext = aesgcm.encrypt(iv, plaintext.encode("utf-8"), None)
+
+            iv_b64 = base64.b64encode(iv).decode("utf-8")
+            ciphertext_b64 = base64.b64encode(ciphertext).decode("utf-8")
+
+            message_to_sign = f"{iv_b64}:{ciphertext_b64}".encode()
+            sig = hmac.new(hmac_key, message_to_sign, hashlib.sha256).hexdigest()
+
+            envelope = {
+                "iv": iv_b64,
+                "ciphertext": ciphertext_b64,
+                "signature": sig,
+            }
+
+            publisher.put(json.dumps(envelope))
+            publisher.undeclare()  # type: ignore[no-untyped-call]
+
+        await asyncio.sleep(0.5)
+
+        assert not hasattr(registry, "_telemetry") or node_id not in registry._telemetry
+
+    finally:
+        router.stop()
+
+
+@pytest.mark.asyncio
+async def test_zenoh_telemetry_future_timestamp_rejection(test_node: Node, node_id: str) -> None:
+    from datetime import timedelta
+
+    registry = NodeRegistry()
+    await registry.register(test_node)
+
+    router_config = zenoh.Config()
+    router_config.insert_json5("listen/endpoints", '["tcp/127.0.0.1:7454"]')
+    router_config.insert_json5("scouting/multicast/enabled", "false")
+
+    router = ZenohRouter(registry, config=router_config)
+    router.start()
+
+    pub_config = zenoh.Config()
+    pub_config.insert_json5("connect/endpoints", '["tcp/127.0.0.1:7454"]')
+    pub_config.insert_json5("scouting/multicast/enabled", "false")
+
+    try:
+        with zenoh.open(pub_config) as session:
+            pub_key = f"public-intelligence/net/nodes/{node_id}/telemetry"
+            publisher = session.declare_publisher(pub_key)
+
+            await asyncio.sleep(0.2)
+
+            future_time = datetime.now(UTC) + timedelta(seconds=15)
+            telemetry_data = {
+                "node_id": node_id,
+                "timestamp": future_time.isoformat(),
+                "cpu_utilization": 50.0,
+            }
+            plaintext = json.dumps(telemetry_data)
+
+            import base64
+            import hashlib
+            import hmac
+
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+            secret_key = "pi_telemetry_secure_default_secret_key"
+            secret_bytes = secret_key.encode("utf-8")
+            enc_key = hashlib.sha256(secret_bytes + b"-encryption").digest()
+            hmac_key = hashlib.sha256(secret_bytes + b"-hmac").digest()
+
+            aesgcm = AESGCM(enc_key)
+            iv = b"\x00" * 12
+            ciphertext = aesgcm.encrypt(iv, plaintext.encode("utf-8"), None)
+
+            iv_b64 = base64.b64encode(iv).decode("utf-8")
+            ciphertext_b64 = base64.b64encode(ciphertext).decode("utf-8")
+
+            message_to_sign = f"{iv_b64}:{ciphertext_b64}".encode()
+            sig = hmac.new(hmac_key, message_to_sign, hashlib.sha256).hexdigest()
+
+            envelope = {
+                "iv": iv_b64,
+                "ciphertext": ciphertext_b64,
+                "signature": sig,
+            }
+
+            publisher.put(json.dumps(envelope))
+            publisher.undeclare()  # type: ignore[no-untyped-call]
+
+        await asyncio.sleep(0.5)
+
+        assert not hasattr(registry, "_telemetry") or node_id not in registry._telemetry
+
+    finally:
+        router.stop()
+
+
 def test_zenoh_router_wan_configuration() -> None:
     from unittest.mock import MagicMock, patch
 

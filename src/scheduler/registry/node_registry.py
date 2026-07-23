@@ -66,6 +66,7 @@ class NodeRegistry:
             self._nodes.pop(node_id, None)
             self._heartbeats.pop(node_id, None)
             self._dampeners.pop(node_id, None)
+            self._telemetry.pop(node_id, None)
 
     async def get(self, node_id: str) -> Node | None:
         """Look up a node by ID.
@@ -206,3 +207,4 @@ class NodeRegistry:
             self._nodes.pop(node_id, None)
             self._heartbeats.pop(node_id, None)
             self._dampeners.pop(node_id, None)
+            self._telemetry.pop(node_id, None)

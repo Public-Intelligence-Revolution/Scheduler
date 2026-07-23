@@ -3,6 +3,7 @@
 import asyncio
 import json
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -277,6 +278,42 @@ class ZenohRouter:
             logger.error(
                 "security_breach_warning",
                 reason=f"Decryption failed or payload altered: {e}",
+                key_expr=key_expr,
+            )
+            return
+
+        # Validate timestamp staleness to prevent replay attacks
+        raw_ts = data.get("timestamp")
+        if raw_ts is None:
+            logger.warning("zenoh_telemetry_missing_timestamp", key_expr=key_expr)
+            return
+
+        ts_dt: datetime | None = None
+        if isinstance(raw_ts, (int, float)):
+            ts_dt = datetime.fromtimestamp(raw_ts, tz=UTC)
+        elif isinstance(raw_ts, str):
+            try:
+                ts_dt = datetime.fromisoformat(raw_ts)
+                if ts_dt.tzinfo is None:
+                    ts_dt = ts_dt.replace(tzinfo=UTC)
+            except ValueError:
+                ts_dt = None
+
+        if ts_dt is None:
+            logger.warning(
+                "zenoh_telemetry_invalid_timestamp_format",
+                timestamp=raw_ts,
+                key_expr=key_expr,
+            )
+            return
+
+        now = datetime.now(tz=UTC)
+        age = (now - ts_dt).total_seconds()
+        if age > 30.0 or age < -10.0:
+            logger.warning(
+                "zenoh_telemetry_stale_timestamp",
+                age=age,
+                timestamp=raw_ts,
                 key_expr=key_expr,
             )
             return
