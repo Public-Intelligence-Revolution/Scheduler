@@ -35,6 +35,17 @@ Documentation Policy
 - Update docs/VISION.md only if the long-term vision changes.
 - Documentation must always match the current repository state.
 
+---
+
+Multi-Agent Sub-Agent Execution Governance
+
+Sub-agents (ORCHESTRATOR, ARCHITECT, CODER, AUDITOR, VERIFIER) operate under these strict invariants:
+
+1. **Shared Project State**: Read-only snapshot of current architecture; atomic reduction of changes.
+2. **Closed-Loop Verification**: Mandatory execution of `pytest`, `ruff check .`, `ruff format --check .`, and `mypy src` before considering work done.
+3. **Automated Documentation Loop**: Updating `docs/STATUS.md`, `docs/ROADMAP.md`, and appending to `AGENTS.md` event logs.
+4. **Git Commit**: Automatic staging (`git add .`) and conventional commits for passing implementations.
+
 Current Priority
 
 Complete Scheduler Version 1 before implementing Version 2 features.
