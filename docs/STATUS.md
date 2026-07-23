@@ -43,6 +43,7 @@ Completed
 - Asyncio.Lock migration for NodeRegistry (non-blocking)
 - Normalized scoring formula to prevent VRAM skew
 - Atomic scheduling dampener to prevent herd effect under concurrent bursts
+- In-Code Multi-Agent Orchestration Engine (`scheduler.agent`) with atomic state transitions
 
 Current Task
 
